@@ -131,7 +131,7 @@ function VarX({ x }: { x: RandomVariables["X"] }) {
       <div className="mt-4 space-y-3">
         <Insight>
           {over
-            ? `La varianza (${x.variance.toFixed(1)}) es ${x.dispersion_index.toFixed(1)} veces la media (${x.mean.toFixed(1)}): hay sobredispersión. Las llegadas son más irregulares que un Poisson puro (horas muy tranquilas y horas con ráfagas)${hasNb ? ", y la binomial negativa, que admite Var > E, se ajusta mejor" : ""}.`
+            ? `La varianza (${x.variance.toFixed(1)}) es ${x.dispersion_index.toFixed(1)} veces la media (${x.mean.toFixed(1)}): hay sobredispersión. Las llegadas son más irregulares que un Poisson puro (horas muy tranquilas y horas con ráfagas)${hasNb ? ", y la binomial negativa, que admite Var > E, se ajusta mejor que el Poisson (la descripción de bondad de ajuste indica si aun así se rechaza)" : ""}.`
             : "La varianza es cercana a la media, como en un Poisson: las llegadas se comportan como eventos independientes a ritmo constante."}
           {x.gof && ` El contraste χ² ${x.gof.p_value < 0.05 ? "rechaza" : "no rechaza"} el modelo ${x.gof.model} (p ${x.gof.p_value < 0.001 ? "< 0.001" : "≈ " + x.gof.p_value.toFixed(3)}).`}
         </Insight>
@@ -207,7 +207,7 @@ function VarY({ y }: { y: RandomVariables["Y"] }) {
           Si las dos curvas se pegan, el modelo describe bien los datos. D = {y.ks.statistic.toFixed(3)} es
           la mayor distancia vertical entre ambas acumuladas
           {y.ks.p_value < 0.05
-            ? "; con tantas muestras la prueba detecta diferencias pequeñas (p < 0.05), pero revisa la gráfica: la forma general (cola larga a la derecha) sí es lognormal."
+            ? "; la prueba rechaza el ajuste lognormal exacto (p < 0.05): con tantas muestras detecta incluso diferencias pequeñas, así que usa la tabla de probabilidades para ver en qué zonas el modelo se aleja de los datos."
             : "; la prueba no rechaza la lognormal (p ≥ 0.05)."}{" "}
           La media ({bytes(y.mean)}) queda muy por encima de la mediana ({bytes(Math.exp(mu))}) porque la
           cola derecha es larga.
@@ -238,8 +238,8 @@ function VarY({ y }: { y: RandomVariables["Y"] }) {
         <Relation>
           <p>
             Los tamaños de malware van de unos cientos de bytes a decenas de megabytes: el logaritmo
-            “comprime” esa cola y la hace casi simétrica. Un buen ajuste lognormal permite estimar, por
-            ejemplo, la probabilidad de que una muestra pese más de 1 MiB sin revisar cada archivo.
+            “comprime” esa cola y la hace casi simétrica. Si el ajuste lognormal es razonable permite estimar, por
+            ejemplo, la probabilidad de que una muestra pese más de 1 MiB sin revisar cada archivo; compara siempre la columna del modelo con la de los datos reales.
           </p>
         </Relation>
       </div>
@@ -272,7 +272,7 @@ function VarZ({ z }: { z: RandomVariables["Z"] }) {
           {" "}
           {(() => {
             const p0 = z.pmf.find((d) => d.k === 0)?.empirical;
-            return p0 != null ? `${pct(p0, 1)} no trae ninguna etiqueta, así que el evento “con tags” (D) deja fuera a una parte relevante de las muestras.` : "";
+            return p0 != null ? `${pct(p0, 1)} no trae ninguna etiqueta${p0 >= 0.05 ? ", así que el evento “con tags” (D) deja fuera a una parte relevante de las muestras" : ", por lo que el evento “con tags” (D) abarca casi todas las muestras"}.` : "";
           })()}
         </Insight>
         <Relation>
