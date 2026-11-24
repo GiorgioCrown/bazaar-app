@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 BigIntStr = str
 VarKey = Literal["file_size", "hourly_count", "family_count", "n_tags"]
@@ -35,12 +35,16 @@ class Overview(BaseModel):
 
 # ---------------------------------------------------------------- explorador
 class Intelligence(BaseModel):
+    model_config = ConfigDict(coerce_numbers_to_str=True)  # abuse.ch mezcla int y str
+
     clamav: list[str] | None = None
     downloads: str | None = None
     uploads: str | None = None
 
 
 class Sample(BaseModel):
+    model_config = ConfigDict(coerce_numbers_to_str=True)
+
     sha256_hash: str
     md5_hash: str | None = None
     sha1_hash: str | None = None
