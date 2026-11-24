@@ -98,6 +98,9 @@ description, count, p`.
   aditividad para eventos disjuntos, complemento, inclusión-exclusión.
 - `independence`: todos los pares (i<j): `p_a, p_b, p_ab, p_a_times_p_b,
   abs_diff, lift, chi2, p_value, independent (p_value>=0.05)`.
+  Además `test` (`chi2`|`fisher`|`degenerate`) y `min_expected`: si alguna esperada de la
+  tabla 2x2 es < 5 el `p_value` es el de Fisher exacto (el χ² no es fiable); si P(A) o P(B)
+  es 0 o 1 no hay prueba (`degenerate`, `p_value` null, `independent` true por definición).
 - `conditional`: matriz `P(row | col)` para los eventos + `family_given_file_type`
   (top 6 familias × top 6 file_type, P(familia | file_type)).
 
