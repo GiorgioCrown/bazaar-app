@@ -155,8 +155,8 @@ function Report({ c, hours }: { c: Combinatorics; hours: number }) {
             <div className="mt-3">
               <Insight>
                 De todos los podios posibles solo uno ocurrió en realidad. Si las familias fueran
-                intercambiables, cada orden sería igual de probable; que este se repita ventana tras
-                ventana indica una jerarquía real.
+                intercambiables, cada orden sería igual de probable; que uno solo ocurra
+                sugiere una jerarquía (esta ventana no basta para afirmar que se repita).
               </Insight>
             </div>
           </div>

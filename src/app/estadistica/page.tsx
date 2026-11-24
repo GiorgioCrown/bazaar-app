@@ -189,7 +189,7 @@ function Position({ p, i }: { p: PositionVar; i: number }) {
       </div>
       <div className="mt-4">
         <Insight>
-          El 50 % central de {WHAT[p.key] ?? p.label} está entre {f(q.q1)} y {f(q.q3)} (rango
+          El 50 % central de los datos ({p.label.toLowerCase()}) está entre {f(q.q1)} y {f(q.q3)} (rango
           intercuartílico {f(q.iqr)}). El P90 es {f(p.highlights.p90)}: solo 1 de cada 10 valores lo
           supera, y el P99 ({f(p.highlights.p99)}) marca los casos verdaderamente extremos
           {p.boxplot.max > p.boxplot.whisker_high
