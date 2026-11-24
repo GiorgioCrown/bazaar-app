@@ -145,8 +145,9 @@ function Independence({ p }: { p: Probability }) {
       index={2}
       topic="Tema 9 · Independencia"
       title="¿A y B son independientes?"
-      hint="A y B son independientes si P(A ∩ B) = P(A) · P(B). Se contrasta con χ² (α = 0.05): p < 0.05 rechaza la independencia."
+      hint="A y B son independientes si P(A ∩ B) = P(A) · P(B). Se contrasta con χ² de Pearson, o con la prueba exacta de Fisher cuando alguna frecuencia esperada es menor que 5 (α = 0.05): p < 0.05 rechaza la independencia."
     >
+      <p className="mb-3 text-sm text-muted-foreground">{p.note}</p>
       <div className="overflow-x-auto rounded-lg border border-border">
         <Table>
           <caption className="sr-only">Prueba de independencia para cada par de eventos</caption>
@@ -159,6 +160,8 @@ function Independence({ p }: { p: Probability }) {
               <TableHead scope="col" className="text-right">P(A)·P(B)</TableHead>
               <TableHead scope="col" className="text-right">Lift</TableHead>
               <TableHead scope="col" className="text-right">χ²</TableHead>
+              <TableHead scope="col">Prueba</TableHead>
+              <TableHead scope="col" className="text-right">Esperada mín.</TableHead>
               <TableHead scope="col" className="text-right">p</TableHead>
               <TableHead scope="col">Veredicto</TableHead>
             </TableRow>
@@ -175,6 +178,16 @@ function Independence({ p }: { p: Probability }) {
                 <TableCell className="text-right tabular-nums">{prob(x.p_a_times_p_b)}</TableCell>
                 <TableCell className="text-right tabular-nums">{x.lift == null ? "—" : x.lift.toFixed(2)}</TableCell>
                 <TableCell className="text-right tabular-nums">{x.chi2 == null ? "—" : num(x.chi2, 1)}</TableCell>
+                <TableCell>
+                  {x.test === "chi2"
+                    ? "χ² de Pearson"
+                    : x.test === "fisher"
+                      ? "Fisher exacto"
+                      : "Degenerada"}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {x.min_expected == null ? "—" : num(x.min_expected, 1)}
+                </TableCell>
                 <TableCell className="text-right tabular-nums">
                   {x.p_value == null ? "—" : x.p_value < 0.001 ? "< 0.001" : x.p_value.toFixed(3)}
                 </TableCell>
@@ -191,7 +204,9 @@ function Independence({ p }: { p: Probability }) {
           {dep.length === 0
             ? "Ningún par rechaza la independencia al 5 %."
             : `${dep.length} de ${p.independence.length} pares son dependientes (p < 0.05).`}{" "}
-          Lift = P(A∩B) / (P(A)·P(B)): 1 significa independencia, más de 1 que A y B ocurren juntos
+          Con test “Fisher exacto” el p-valor es el exacto (la aproximación χ² no es fiable con
+          frecuencias esperadas menores que 5); “Degenerada” significa que P(A) o P(B) es 0 o 1, así
+          que la independencia se cumple por definición y no hay p-valor. Lift = P(A∩B) / (P(A)·P(B)): 1 significa independencia, más de 1 que A y B ocurren juntos
           más de lo esperado, menos de 1 que se evitan.
           {byLift &&
             ` La dependencia más fuerte es ${byLift.a}–${byLift.b} (lift ${byLift.lift?.toFixed(2)}): “${name(byLift.a)}” y “${name(byLift.b)}” ${(byLift.lift ?? 1) > 1 ? "tienden a coincidir" : "rara vez coinciden"}.`}{" "}
