@@ -32,12 +32,9 @@ def test_calc_validacion(client):
     assert client.get("/api/combinatorics/calc", params={"n": 5001, "k": 1}).status_code == 422
 
 
-def test_combinatoria_hipergeometrica(client):
+def test_combinatoria_perfiles_y_podio(client):
     j = get(client, "/api/combinatorics")
-    hg = j["combinations"]["hypergeometric"]
-    assert hg["population"] == 100 and hg["successes"] == 60 and hg["draws"] == 10
-    assert sum(p["p"] for p in hg["pmf"]) == pytest.approx(1.0)
-    assert hg["p_at_least_one"] == pytest.approx(1 - math.comb(40, 10) / math.comb(100, 10))
+    assert "hypergeometric" not in j["combinations"]
     # 2 familias -> P(2,2) = 2 rankings; perfiles posibles = 2 * 2 tipos * 1 vía * 2 clamav
     assert j["counting"]["possible_profiles"] == "8"
     assert j["permutations"]["observed_podium"][0] == {"family": "X", "count": 60}
@@ -66,8 +63,8 @@ def test_condicional_y_independencia(client):
     assert pair["p_ab"] == pytest.approx(0.3)
     assert pair["p_a_times_p_b"] == pytest.approx(0.4 * 0.6)
     assert pair["abs_diff"] == pytest.approx(0.06)
-    assert pair["lift"] == pytest.approx(0.3 / 0.24)
-    assert pair["p_value"] is not None and 0 <= pair["p_value"] <= 1
+    assert pair["independent"] is False  # |0.06| > 0.01
+    assert set(pair) == {"a", "b", "p_a", "p_b", "p_ab", "p_a_times_p_b", "abs_diff", "independent"}
     f = j["conditional"]["family_given_file_type"]
     i, k = f["families"].index("X"), f["file_types"].index("exe")
     assert f["p"][i][k] == pytest.approx(0.75)  # P(X | exe) = 30/40
@@ -117,10 +114,12 @@ def test_descriptiva_y_posiciones_endpoints(client):
 
 def test_variables_aleatorias_endpoint(client):
     j = get(client, "/api/random-variables")
-    assert j["X"]["kind"] == "discrete" and "lambda" in j["X"]
+    assert j["X"]["kind"] == "discrete" and "lambda" not in j["X"] and j["X"]["std"] >= 0
     assert j["Y"]["kind"] == "continuous" and j["Z"]["kind"] == "discrete"
     assert sum(p["empirical"] for p in j["Z"]["pmf"]) == pytest.approx(1.0)
-    assert j["Y"]["curve"][0]["cdf_model"] <= j["Y"]["curve"][-1]["cdf_model"]
+    cdf = [c["cdf_empirical"] for c in j["Y"]["cdf"]]
+    assert len(cdf) == 80 and cdf == sorted(cdf) and cdf[-1] == 1.0
+    assert len(j["Y"]["probabilities"]) == 4 and "ks" not in j["Y"]
 
 
 def test_viz_y_familias(client):
@@ -129,9 +128,11 @@ def test_viz_y_familias(client):
     assert sum(sum(r) for r in v["family_hour_matrix"]) == 100
     f = get(client, "/api/families")
     assert f["families"][0]["count"] == 60 and f["families"][0]["p"] == pytest.approx(0.6)
-    assert f["entropy"] == pytest.approx(-(0.6 * math.log2(0.6) + 0.4 * math.log2(0.4)))
-    assert f["gini_simpson"] == pytest.approx(1 - (0.36 + 0.16))
+    assert set(f["families"][0]) == {"family", "count", "p", "first_seen", "last_seen"}
+    assert set(f) == {"families", "top5_share", "hourly", "file_types"}
+    assert f["top5_share"] == pytest.approx(1.0)
     o = get(client, "/api/overview")
+    assert "lambda_total" not in o and o["avg_per_hour"] > 0
     assert o["total"] == 100 and o["classified"] == 100 and o["enriched"] == 100
 
 

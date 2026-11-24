@@ -1,6 +1,6 @@
 # API FastAPI: análisis probabilístico de malware
 
-Calcula en Python (pandas + numpy + scipy) todos los temas del curso sobre datos
+Calcula en Python (pandas + numpy; scipy solo para el rango percentil) todos los temas del curso sobre datos
 **reales** de MalwareBazaar (abuse.ch). Next.js solo presenta. Contrato en
 `docs/api-contract.md`; tipos TS en `src/lib/api-types.ts`.
 
@@ -37,24 +37,20 @@ file_size, delivery_method, reporter, tags, n_tags, clamav, hour, enriched, file
 Todos aceptan `?hours=1..168` (default 168), excepto `search` y `calc`.
 
 ## Decisiones estadísticas (verificables)
-- **Desviación y varianza muestrales**: `ddof=1`. Asimetría y curtosis (exceso)
-  con corrección de sesgo (`scipy.stats.skew/kurtosis(bias=False)`).
+- **Desviación y varianza muestrales**: `ddof=1`. Sin asimetría, curtosis ni CV.
 - **Cuantiles**: `numpy.percentile(method="linear")` (h = (n−1)p; igual que
   `PERCENTIL.INC` de Excel y tipo 7 de R). Deciles D1–D9 = P10…P90.
 - **Moda**: todas las modas; lista vacía si ningún valor se repite.
-- **Atípicos / bigotes**: regla de Tukey, cercas Q1−1.5·IQR y Q3+1.5·IQR.
-- **Intervalo de proporciones**: Wilson 95 %. Dispersión de Poisson:
-  χ² = Σ(x−x̄)²/x̄ con n−1 gl.
+- **Atípicos / bigotes**: regla del IQR, cercas Q1−1.5·IQR y Q3+1.5·IQR.
+- **Overview**: `avg_per_hour` = total de muestras / horas observadas.
 - **Probabilidad (8-10)**: Ω = muestras con metadatos completos; P(E)=|E|/|Ω|.
-  Independencia: χ² de Pearson 2×2 sin corrección de Yates, α = 0.05 (con n
-  grande casi todo se rechaza: se interpreta junto con `lift` y `abs_diff`).
-  Si alguna esperada < 5 se usa Fisher exacto; si un evento es imposible/seguro (p. ej. F) no hay prueba (`null`).
+  Independencia: se compara P(A∩B) con P(A)·P(B); se considera independiente
+  (aprox.) si `abs_diff ≤ 0.01`.
 - **Bayes**: P(h|e)=P(e|h)P(h)/Σ_h P(e|h)P(h), sin suavizado; evidencias
-  encadenadas = naive Bayes (independencia condicional). Evidencia imposible → 422.
-- **X** (muestras/hora): Poisson(λ=x̄) vs. Binomial Negativa por momentos
-  (r=m²/(v−m), p=m/v); χ² con clases agrupadas (E ≥ 5) y gl = clases−1−parámetros.
-- **Y** (tamaño): lognormal con μ,σ de ln Y (σ muestral); KS (p-valor optimista
-  porque los parámetros se estiman de los mismos datos).
+  encadenadas suponen independencia condicional. Evidencia imposible → 422.
+- **Variables aleatorias**: X (muestras/hora) y Z (tags/muestra) discretas con
+  pmf empírica; Y (tamaño) continua con histograma, CDF empírica y
+  probabilidades por intervalos. E[V] = promedio, Var[V] = varianza muestral.
 - **Enteros enormes** (factoriales, C(n,k)): enteros de Python → `string` + `log10`.
 - **Viz**: enlaces de la red de familias = similitud coseno entre perfiles de
   `file_type` y `delivery_method` (≥ 0.3, máx. 60).
@@ -63,4 +59,4 @@ Todos aceptan `?hours=1..168` (default 168), excepto `search` y `calc`.
 ## Pruebas
 `api/tests/` usa un DataFrame **sintético solo para validar fórmulas** con
 resultados calculables a mano (cuartiles de 1..9, Bayes P(X|exe)=0.75, C(n,k),
-Poisson suma 1…). La API real nunca usa datos inventados.
+pmf suma 1…). La API real nunca usa datos inventados.

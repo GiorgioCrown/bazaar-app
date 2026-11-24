@@ -5,12 +5,10 @@ import math
 
 import numpy as np
 import pytest
-from scipy import stats
 
 from app.descriptive import describe, histogram
-from app.families import dispersion_test, wilson
 from app.positions import position
-from app.randvars import gof_chi2, group_classes, nb_params, variable_x
+from app.randvars import variable_x, variable_y, variable_z
 from app.util import clean
 from app.variables import Var
 
@@ -29,7 +27,7 @@ def test_descriptiva_valores_conocidos():
     assert d["variance"] == pytest.approx(32 / 7)
     assert d["std"] == pytest.approx(math.sqrt(32 / 7))
     assert d["range"] == 7.0
-    assert d["cv"] == pytest.approx(d["std"] / 5.0)
+    assert "cv" not in d and "skewness" not in d and "kurtosis" not in d
 
 
 def test_multimodal_devuelve_todas_las_modas():
@@ -78,106 +76,31 @@ def test_rango_percentil():
     assert ranks["2 tags"] == 20.0  # 2 de 10 datos son <= 2
 
 
-# ---------------------------------------------------------------- familias
-def test_wilson_conocido():
-    lo, hi = wilson(50, 100)
-    assert lo == pytest.approx(0.4038, abs=1e-4) and hi == pytest.approx(0.5962, abs=1e-4)
-    assert wilson(0, 0) == (0.0, 0.0)
-
-
-def test_dispersion_poisson_vs_sobredispersion():
-    import pandas as pd
-
-    flat = dispersion_test(pd.Series([5, 5, 5, 5, 5]))
-    assert flat["index"] == 0.0
-    bursty = dispersion_test(pd.Series([0, 0, 0, 40, 0, 0, 0, 40]))
-    assert bursty["index"] > 5 and bursty["p_value"] < 0.001
-
-
 # ---------------------------------------------------------------- 12 v.a.
-def test_pmf_empirica_y_poisson_suman_uno():
-    x = np.random.default_rng(1).poisson(6, 400)
-    r = variable_x(x.astype(float))
+def test_pmf_empirica_suma_uno_y_momentos():
+    x = np.random.default_rng(1).poisson(6, 400).astype(float)
+    r = variable_x(x)
     assert sum(p["empirical"] for p in r["pmf"]) == pytest.approx(1.0)
-    # la pmf Poisson completa suma 1 (la tabla solo llega hasta max(x))
-    assert stats.poisson(r["lambda"]).pmf(np.arange(0, 200)).sum() == pytest.approx(1.0)
-    assert r["dispersion_index"] == pytest.approx(x.var(ddof=1) / x.mean())
+    assert r["mean"] == pytest.approx(x.mean()) and r["variance"] == pytest.approx(x.var(ddof=1))
+    assert r["std"] == pytest.approx(math.sqrt(r["variance"]))
+    # E[X] desde la pmf coincide con el promedio
+    assert sum(p["k"] * p["empirical"] for p in r["pmf"]) == pytest.approx(x.mean())
 
 
-def test_binomial_negativa_por_momentos():
-    r, p = nb_params(10.0, 40.0)
-    assert r == pytest.approx(100 / 30) and p == pytest.approx(0.25)
-    d = stats.nbinom(r, p)
-    assert d.mean() == pytest.approx(10.0) and d.var() == pytest.approx(40.0)
-    assert nb_params(10.0, 8.0) is None  # sin sobredispersión no aplica
+def test_cola_discreta_p_al_menos_k():
+    r = variable_z(np.array([0, 0, 1, 2, 2, 2], dtype=float))
+    t = {c["k"]: c for c in r["tail"]}
+    assert t[2]["p_equal"] == pytest.approx(0.5) and t[1]["p_at_least"] == pytest.approx(4 / 6)
 
 
-def test_agrupacion_de_clases_esperado_minimo_5():
-    groups = group_classes(np.array([1.0, 2.0, 3.0, 0.5, 0.2, 10.0, 1.0]))
-    flat = [i for g in groups for i in g]
-    assert flat == list(range(7))  # parte exacta
-    assert all(sum(np.array([1.0, 2.0, 3.0, 0.5, 0.2, 10.0, 1.0])[g]) >= 5 for g in groups)
-
-
-def test_gof_ajuste_perfecto_da_chi2_cero():
-    d = stats.poisson(3)
-    ks = np.arange(0, 12)
-    freq = np.round(1000 * d.pmf(ks))
-    freq[-1] += 1000 - freq.sum()
-    g = gof_chi2(freq, d, 1, "Poisson")
-    assert g["chi2"] < 2 and g["p_value"] > 0.9
+def test_y_excluye_tamanos_cero_y_probabilidades_por_intervalos():
+    v = variable_y(np.array([0.0, 10.0, 100.0, 1000.0, 5000.0]))
+    assert len(v["cdf"]) == 80 and v["cdf"][-1]["cdf_empirical"] == 1.0
+    assert v["probabilities"][0]["p_empirical"] == 1.0  # todos < 100 KiB
+    assert np.isfinite(v["mean"]) and np.isfinite(v["std"])
 
 
 # ---------------------------------------------------------------- util
 def test_clean_elimina_nan_e_inf():
     out = clean({"a": float("nan"), "b": [float("inf"), 1.5], "c": np.int64(3), "d": np.float64("nan")})
     assert out == {"a": None, "b": [None, 1.5], "c": 3, "d": None}
-
-
-# ---------------------------------------------------------------- independencia 2x2
-def test_independencia_chi2_tabla_conocida():
-    import numpy as np
-    from scipy import stats
-
-    from app.probability import independence_test
-
-    # tabla [[30,20],[20,30]] (n=100, esperadas 25): chi2 = 4 sin Yates, gl=1
-    a = np.array([True] * 50 + [False] * 50)
-    b = np.array([True] * 30 + [False] * 20 + [True] * 20 + [False] * 30)
-    r = independence_test(a, b)
-    assert r["test"] == "chi2" and r["min_expected"] == pytest.approx(25.0)
-    assert r["chi2"] == pytest.approx(4.0) and r["p_value"] == pytest.approx(stats.chi2.sf(4.0, 1))
-
-
-def test_independencia_esperadas_pequenas_usa_fisher():
-    import numpy as np
-    from scipy import stats
-
-    from app.probability import independence_test
-
-    # B casi seguro: la celda esperada de ~B es < 5, chi2 no es fiable
-    a = np.array([True] * 10 + [False] * 90)
-    b = np.array([True] * 9 + [False] * 1 + [True] * 89 + [False] * 1)
-    r = independence_test(a, b)
-    assert r["test"] == "fisher" and r["min_expected"] < 5
-    assert r["p_value"] == pytest.approx(stats.fisher_exact([[9, 1], [89, 1]])[1])
-
-
-def test_independencia_evento_imposible_es_degenerado():
-    import numpy as np
-
-    from app.probability import independence_test
-
-    a = np.array([True, False, True, False])
-    r = independence_test(a, np.zeros(4, dtype=bool))
-    assert r == {"chi2": None, "p_value": None, "test": "degenerate", "min_expected": None}
-
-
-def test_lognormal_excluye_tamanos_cero_sin_nan():
-    import numpy as np
-
-    from app.randvars import variable_y
-
-    v = variable_y(np.array([0.0, 10.0, 100.0, 1000.0, 5000.0]))
-    assert np.isfinite(v["lognormal"]["mu"]) and np.isfinite(v["lognormal"]["sigma"])
-    assert "excluyeron 1" in v["description"]
