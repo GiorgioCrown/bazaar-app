@@ -551,7 +551,6 @@ export function PriorPosteriorChart({
     prior: { label: "A priori P(h)", color: BLUE },
     posterior: { label: "A posteriori P(h | evidencia)", color: AMBER },
   } satisfies ChartConfig;
-  const pctLabel = (v: unknown) => `${(Number(v) * 100).toFixed(1)} %`;
   return (
     <ChartContainer
       config={config}
@@ -563,7 +562,7 @@ export function PriorPosteriorChart({
       <BarChart
         data={data}
         layout="vertical"
-        margin={{ left: 0, right: 56, top: 0, bottom: 0 }}
+        margin={{ left: 0, right: 16, top: 0, bottom: 0 }}
         barCategoryGap={8}
       >
         <YAxis
@@ -592,26 +591,8 @@ export function PriorPosteriorChart({
           }
         />
         <Legend wrapperStyle={{ fontSize: 12 }} />
-        <Bar dataKey="prior" name="prior" fill={BLUE} radius={3}>
-          <LabelList
-            dataKey="prior"
-            position="right"
-            offset={6}
-            formatter={pctLabel}
-            fill="var(--muted-foreground)"
-            fontSize={11}
-          />
-        </Bar>
-        <Bar dataKey="posterior" name="posterior" fill={AMBER} radius={3}>
-          <LabelList
-            dataKey="posterior"
-            position="right"
-            offset={6}
-            formatter={pctLabel}
-            fill="var(--foreground)"
-            fontSize={11}
-          />
-        </Bar>
+        <Bar dataKey="prior" name="prior" fill={BLUE} radius={3} />
+        <Bar dataKey="posterior" name="posterior" fill={AMBER} radius={3} />
       </BarChart>
     </ChartContainer>
   );

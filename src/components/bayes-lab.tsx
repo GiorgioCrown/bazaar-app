@@ -92,6 +92,30 @@ export function BayesLab({ initial, hours }: { initial: Bayes; hours: number }) 
         <div>
           <h3 className="mb-1 font-heading text-xl font-semibold">A priori frente a a posteriori</h3>
           <PriorPosteriorChart prior={data.prior} posterior={data.posterior} />
+          <details className="mt-2 text-sm">
+            <summary className="cursor-pointer text-muted-foreground">Ver valores exactos</summary>
+            <table className="mt-2 w-full max-w-lg">
+              <caption className="sr-only">Probabilidad a priori y a posteriori por familia</caption>
+              <thead className="text-left text-muted-foreground">
+                <tr>
+                  <th scope="col" className="py-1 font-medium">Familia</th>
+                  <th scope="col" className="py-1 text-right font-medium">A priori</th>
+                  <th scope="col" className="py-1 text-right font-medium">A posteriori</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.prior.map((d) => (
+                  <tr key={d.hypothesis} className="border-t border-border">
+                    <th scope="row" className="py-1 text-left font-medium">{d.hypothesis}</th>
+                    <td className="py-1 text-right tabular-nums">{pct(d.p, 2)}</td>
+                    <td className="py-1 text-right font-semibold tabular-nums">
+                      {pct(data.posterior.find((q) => q.hypothesis === d.hypothesis)?.p ?? 0, 2)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </details>
         </div>
 
         {top && (
