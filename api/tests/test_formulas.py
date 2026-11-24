@@ -171,3 +171,13 @@ def test_independencia_evento_imposible_es_degenerado():
     a = np.array([True, False, True, False])
     r = independence_test(a, np.zeros(4, dtype=bool))
     assert r == {"chi2": None, "p_value": None, "test": "degenerate", "min_expected": None}
+
+
+def test_lognormal_excluye_tamanos_cero_sin_nan():
+    import numpy as np
+
+    from app.randvars import variable_y
+
+    v = variable_y(np.array([0.0, 10.0, 100.0, 1000.0, 5000.0]))
+    assert np.isfinite(v["lognormal"]["mu"]) and np.isfinite(v["lognormal"]["sigma"])
+    assert "excluyeron 1" in v["description"]

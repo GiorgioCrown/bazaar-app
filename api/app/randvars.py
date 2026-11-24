@@ -118,6 +118,8 @@ def variable_x(x: np.ndarray) -> dict:
 
 
 def variable_y(y: np.ndarray) -> dict:
+    zeros = int((y <= 0).sum())
+    y = y[y > 0]  # ln no está definido en 0: esas muestras se excluyen y se declara
     n = len(y)
     ln = np.log(y)
     mu, sigma = float(ln.mean()), float(ln.std(ddof=1))
@@ -139,6 +141,7 @@ def variable_y(y: np.ndarray) -> dict:
         f"Si ln Y ~ Normal(μ={mu:.2f}, σ={sigma:.2f}) entonces Y es lognormal con mediana e^μ = {np.exp(mu):,.0f} B. "
         f"Prueba de Kolmogorov–Smirnov: D={ks_stat:.3f}, p={ks_p:.3g}"
         + (" (se rechaza el ajuste lognormal: hay muchos tamaños repetidos y varias poblaciones de malware mezcladas)." if ks_p < 0.05 else " (no se rechaza el ajuste).")
+        + (f" Se excluyeron {zeros} muestra(s) de tamaño 0 (ln no definido)." if zeros else "")
         + " Nota: μ y σ se estiman con los mismos datos, por lo que el p-valor de KS es optimista."
     )
     return {
