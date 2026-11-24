@@ -5,8 +5,13 @@ import math
 from datetime import datetime
 from typing import Any
 
+import sys
+
 import numpy as np
 import pandas as pd
+
+if hasattr(sys, "set_int_max_str_digits"):
+    sys.set_int_max_str_digits(0)  # factoriales enormes -> str
 
 
 def clean(obj: Any) -> Any:

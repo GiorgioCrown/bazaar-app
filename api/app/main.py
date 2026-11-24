@@ -67,7 +67,7 @@ def snapshot() -> dict:
         raise HTTPException(status_code=502, detail=str(e)) from e
 
 
-from . import bayes, descriptive, families, positions, probability, search, viz  # noqa: E402
+from . import bayes, combinatorics, descriptive, families, positions, probability, search, viz  # noqa: E402
 
-for _r in (families.router, search.router, descriptive.router, positions.router, viz.router, probability.router, bayes.router):
+for _r in (families.router, search.router, descriptive.router, positions.router, viz.router, probability.router, bayes.router, combinatorics.router):
     app.include_router(_r)
