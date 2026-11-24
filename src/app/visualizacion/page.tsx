@@ -57,7 +57,7 @@ function insights(v: Viz) {
   const p99 = pc(99);
   const pct =
     p50 && p99
-      ? `La mediana (P50) es ${fmtBytes(p50)} pero el P99 llega a ${fmtBytes(p99)}, ${(p99 / p50).toLocaleString("es-MX", { maximumFractionDigits: 1 })} veces mayor: una distribución con cola larga a la derecha.`
+      ? `La mediana (P50) es ${fmtBytes(p50)} pero el P99 llega a ${fmtBytes(p99)}, ${(p99 / p50).toLocaleString("es-MX", { maximumFractionDigits: 1 })} veces mayor: unos pocos archivos son enormes.`
       : "No hay percentiles disponibles.";
 
   const deg = new Map<string, number>();
