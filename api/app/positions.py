@@ -33,7 +33,7 @@ def rank_examples(v: Var) -> list[tuple[str, float]]:
         ]
     if v.key == "hourly_count":
         return [
-            ("Media por hora (λ)", mean),
+            ("Media por hora", mean),
             ("Dos veces la media", 2 * mean),
             ("Hora más activa", float(x.max())),
         ]
