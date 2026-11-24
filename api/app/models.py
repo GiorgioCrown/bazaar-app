@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 
 BigIntStr = str
 VarKey = Literal["file_size", "hourly_count", "family_count", "n_tags"]
@@ -25,7 +25,7 @@ class Overview(BaseModel):
     window_start: str | None
     window_end: str | None
     distinct_families: int
-    lambda_total: float
+    avg_per_hour: float
     offline: bool
     fetched_at: str
     # Extras (documentados en el contrato): muestras con metadatos completos.
@@ -74,11 +74,6 @@ class FamilyStat(BaseModel):
     family: str
     count: int
     p: float
-    ci_low: float
-    ci_high: float
-    rate_per_hour: float
-    p_next_hour: float
-    p_next_24h: float
     first_seen: str | None
     last_seen: str | None
 
@@ -86,13 +81,6 @@ class FamilyStat(BaseModel):
 class HourCount(BaseModel):
     hour: str
     count: int
-
-
-class Dispersion(BaseModel):
-    index: float
-    chi2: float
-    df: int
-    p_value: float | None
 
 
 class FileTypeShare(BaseModel):
@@ -103,12 +91,8 @@ class FileTypeShare(BaseModel):
 
 class Families(BaseModel):
     families: list[FamilyStat]
-    entropy: float
-    entropy_norm: float
-    gini_simpson: float
     top5_share: float
     hourly: list[HourCount]
-    dispersion: Dispersion | None
     file_types: list[FileTypeShare]
 
 
@@ -158,24 +142,9 @@ class TagPair(BaseModel):
     count: int
 
 
-class HyperPmf(BaseModel):
-    k: int
-    p: float
-
-
-class Hypergeometric(BaseModel):
-    population: int
-    successes: int
-    draws: int
-    family: str
-    p_at_least_one: float
-    pmf: list[HyperPmf]
-
-
 class Combinations(BaseModel):
     items: list[CombItem]
     tag_pairs: list[TagPair]
-    hypergeometric: Hypergeometric
 
 
 class Combinatorics(BaseModel):
@@ -228,9 +197,6 @@ class DescVar(BaseModel):
     min: float
     max: float
     range: float
-    cv: float | None
-    skewness: float | None
-    kurtosis: float | None
     histogram: Histogram
     outliers: Outliers
 
@@ -318,12 +284,7 @@ class IndependencePair(BaseModel):
     p_ab: float
     p_a_times_p_b: float
     abs_diff: float
-    lift: float | None
-    chi2: float | None
-    p_value: float | None
     independent: bool
-    test: Literal["chi2", "fisher", "degenerate"]
-    min_expected: float | None
 
 
 class FamilyGivenFileType(BaseModel):
@@ -394,15 +355,6 @@ class Bayes(BaseModel):
 class RvPmfPoint(BaseModel):
     k: int
     empirical: float
-    poisson: float
-    neg_binomial: float | None = None
-
-
-class RvGof(BaseModel):
-    chi2: float
-    df: int
-    p_value: float
-    model: str
 
 
 class RvTail(BaseModel):
@@ -419,35 +371,18 @@ class RvDiscrete(BaseModel):
     support: str
     mean: float
     variance: float
+    std: float
     pmf: list[RvPmfPoint]
-    lambda_: float = Field(alias="lambda")
-    dispersion_index: float
-    gof: RvGof | None
     tail: list[RvTail]
 
-    model_config = {"populate_by_name": True}
 
-
-class Lognormal(BaseModel):
-    mu: float
-    sigma: float
-
-
-class CurvePoint(BaseModel):
+class CdfPoint(BaseModel):
     x: float
-    pdf_log: float
     cdf_empirical: float
-    cdf_model: float
-
-
-class Ks(BaseModel):
-    statistic: float
-    p_value: float
 
 
 class RvProbability(BaseModel):
     label: str
-    p_model: float
     p_empirical: float
 
 
@@ -459,33 +394,16 @@ class RvContinuous(BaseModel):
     support: str
     mean: float
     variance: float
-    lognormal: Lognormal
-    curve: list[CurvePoint]
+    std: float
     histogram: Histogram
-    ks: Ks
+    cdf: list[CdfPoint]
     probabilities: list[RvProbability]
-
-
-class ZPmfPoint(BaseModel):
-    k: int
-    empirical: float
-
-
-class RvZ(BaseModel):
-    id: Literal["X", "Y", "Z"]
-    name: str
-    description: str
-    kind: Literal["discrete"]
-    support: str
-    mean: float
-    variance: float
-    pmf: list[ZPmfPoint]
 
 
 class RandomVariables(BaseModel):
     X: RvDiscrete
     Y: RvContinuous
-    Z: RvZ
+    Z: RvDiscrete
 
 
 # ---------------------------------------------------------------- 13 viz

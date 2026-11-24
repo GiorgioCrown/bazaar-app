@@ -1,7 +1,6 @@
-"""/api/descriptive (sección 6): estadística descriptiva con numpy/scipy.
+"""/api/descriptive (sección 6): estadística descriptiva con numpy.
 
 - Desviación estándar y varianza muestrales (ddof=1).
-- Asimetría y curtosis (exceso) con corrección de sesgo muestral (scipy, bias=False).
 - Moda: todas las modas; vacía si ningún valor se repite (frecuencia máxima 1).
 - Atípicos: regla de Tukey, fuera de [Q1-1.5·IQR, Q3+1.5·IQR].
 """
@@ -9,7 +8,6 @@ from __future__ import annotations
 
 import numpy as np
 from fastapi import APIRouter
-from scipy import stats
 
 from .deps import Hours, get_dataset
 from .models import Descriptive
@@ -73,9 +71,6 @@ def describe(v: Var) -> dict:
         "min": float(x.min()),
         "max": float(x.max()),
         "range": float(x.max() - x.min()),
-        "cv": std / mean if mean != 0 else None,
-        "skewness": float(stats.skew(x, bias=False)) if n > 2 and std > 0 else None,
-        "kurtosis": float(stats.kurtosis(x, bias=False)) if n > 3 and std > 0 else None,
         "histogram": histogram(x, v.scale, v.kind == "discrete"),
         "outliers": {"count": int(((x < fl) | (x > fh)).sum()), "fence_low": float(fl), "fence_high": float(fh)},
     }

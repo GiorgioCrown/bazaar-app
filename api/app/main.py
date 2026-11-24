@@ -50,7 +50,7 @@ def overview(hours: Hours = 168) -> dict:
             "window_start": fmt_utc(df["first_seen"].min()) if total else None,
             "window_end": fmt_utc(df["first_seen"].max()) if total else None,
             "distinct_families": int(df["family"].nunique()),
-            "lambda_total": total / obs,
+            "avg_per_hour": total / obs,
             "offline": ds.offline,
             "fetched_at": ds.fetched_at,
             "enriched": enriched,
