@@ -283,55 +283,42 @@ export function PmfChart({
   );
 }
 
-/* ---------- Lognormal: pdf y CDF ---------- */
+/* ---------- Densidad (histograma) y CDF empírica de una continua ---------- */
 
-type Curve = {
-  x: number;
-  pdf_log: number;
-  cdf_empirical: number;
-  cdf_model: number;
-}[];
-
-export function LognormalPdfChart({
-  curve,
-  histogram,
-}: {
-  curve: Curve;
-  histogram: Histogram;
-}) {
+/** Histograma de densidad del tamaño: el área de cada barra es su probabilidad. */
+export function DensityChart({ histogram }: { histogram: Histogram }) {
   const total = histogram.counts.reduce((a, b) => a + b, 0) || 1;
-  // histograma como densidad sobre log10(bytes): cuentas / (N · ancho del bin)
-  const hist = histogram.counts.map((c, i) => {
+  // Clases equiespaciadas en log10(bytes): densidad = P(clase) / ancho en log10.
+  const data = histogram.counts.map((c, i) => {
     const lo = Math.log10(Math.max(histogram.edges[i], 1));
     const hi = Math.log10(Math.max(histogram.edges[i + 1], 1));
-    return { lx: (lo + hi) / 2, hist: c / (total * Math.max(hi - lo, 1e-9)) };
+    return {
+      name: fmtBytes(histogram.edges[i]),
+      range: `${fmtBytes(histogram.edges[i])} – ${fmtBytes(histogram.edges[i + 1])}`,
+      density: c / total / Math.max(hi - lo, 1e-9),
+      p: c / total,
+    };
   });
-  const model = curve
-    .filter((c) => c.x > 0)
-    .map((c) => ({ lx: Math.log10(c.x), model: c.pdf_log }));
-  const data = [...hist, ...model].sort((a, b) => a.lx - b.lx);
   const config = {
-    hist: { label: "Datos (densidad)", color: AMBER },
-    model: { label: "Lognormal ajustada", color: BLUE },
+    density: { label: "Densidad", color: AMBER },
   } satisfies ChartConfig;
+  const step = Math.max(1, Math.ceil(data.length / 8));
   return (
     <ChartContainer
       config={config}
       className="aspect-auto h-64 w-full"
       role="img"
-      aria-label="Densidad del tamaño de archivo: histograma frente al modelo lognormal"
+      aria-label="Histograma de densidad del tamaño de archivo"
     >
-      <ComposedChart data={data} margin={{ left: -4, right: 8, top: 8 }}>
+      <BarChart data={data} margin={{ left: -4, right: 8, top: 8 }} barCategoryGap={1}>
         <CartesianGrid vertical={false} stroke={GRID} />
         <XAxis
-          dataKey="lx"
-          type="number"
-          domain={["dataMin", "dataMax"]}
-          tickFormatter={(v) => fmtBytes(10 ** Number(v))}
+          dataKey="name"
           tickLine={false}
           axisLine={false}
           tick={TICK}
-          tickCount={7}
+          interval={step - 1}
+          tickMargin={6}
         />
         <YAxis
           tickLine={false}
@@ -341,60 +328,38 @@ export function LognormalPdfChart({
           tickFormatter={(v) => Number(v).toFixed(2)}
         />
         <ChartTooltip
+          cursor={{ fill: "oklch(1 0 0 / 0.05)" }}
           content={
             <ChartTooltipContent
-              labelFormatter={(v) => `≈ ${fmtBytes(10 ** Number(v))}`}
-              formatter={(v, name) => (
+              labelFormatter={(_v, pl) => pl?.[0]?.payload?.range}
+              formatter={(v, _name, item) => (
                 <div className="flex w-full justify-between gap-4">
-                  <span>
-                    {config[name as keyof typeof config]?.label ?? name}
-                  </span>
+                  <span>Densidad (P = {(Number(item?.payload?.p) * 100).toFixed(1)} %)</span>
                   <span className="tabular-nums">{Number(v).toFixed(3)}</span>
                 </div>
               )}
             />
           }
         />
-        <Legend wrapperStyle={{ fontSize: 12 }} />
-        <Bar isAnimationActive={false}
-          dataKey="hist"
-          name="Datos (densidad)"
-          fill={AMBER}
-          fillOpacity={0.55}
-          barSize={16}
-        />
-        <Line isAnimationActive={false}
-          dataKey="model"
-          name="Lognormal ajustada"
-          stroke={BLUE}
-          strokeWidth={2.5}
-          dot={false}
-          connectNulls
-          type="monotone"
-        />
-      </ComposedChart>
+        <Bar isAnimationActive={false} dataKey="density" fill={AMBER} radius={[2, 2, 0, 0]} />
+      </BarChart>
     </ChartContainer>
   );
 }
 
-export function CdfChart({ curve }: { curve: Curve }) {
+export function CdfChart({ curve }: { curve: { x: number; cdf_empirical: number }[] }) {
   const data = curve
     .filter((c) => c.x > 0)
-    .map((c) => ({
-      lx: Math.log10(c.x),
-      emp: c.cdf_empirical,
-      model: c.cdf_model,
-    }));
+    .map((c) => ({ lx: Math.log10(c.x), emp: c.cdf_empirical }));
   const config = {
-    emp: { label: "F empírica", color: AMBER },
-    model: { label: "F lognormal", color: BLUE },
+    emp: { label: "F(y) = P(Y ≤ y)", color: AMBER },
   } satisfies ChartConfig;
   return (
     <ChartContainer
       config={config}
       className="aspect-auto h-64 w-full"
       role="img"
-      aria-label="Función de distribución acumulada empírica frente a la lognormal"
+      aria-label="Función de distribución acumulada empírica del tamaño de archivo"
     >
       <LineChart data={data} margin={{ left: -4, right: 8, top: 8 }}>
         <CartesianGrid stroke={GRID} />
@@ -408,42 +373,26 @@ export function CdfChart({ curve }: { curve: Curve }) {
           tick={TICK}
           tickCount={7}
         />
-        <YAxis
-          domain={[0, 1]}
-          tickLine={false}
-          axisLine={false}
-          width={40}
-          tick={TICK}
-        />
+        <YAxis domain={[0, 1]} tickLine={false} axisLine={false} width={40} tick={TICK} />
         <ChartTooltip
           content={
             <ChartTooltipContent
               labelFormatter={(v) => `≤ ${fmtBytes(10 ** Number(v))}`}
-              formatter={(v, name) => (
+              formatter={(v) => (
                 <div className="flex w-full justify-between gap-4">
-                  <span>
-                    {config[name as keyof typeof config]?.label ?? name}
-                  </span>
+                  <span>P(Y ≤ y)</span>
                   <span className="tabular-nums">{Number(v).toFixed(3)}</span>
                 </div>
               )}
             />
           }
         />
-        <Legend wrapperStyle={{ fontSize: 12 }} />
-        <Line isAnimationActive={false}
+        <Line
+          isAnimationActive={false}
           dataKey="emp"
-          name="F empírica"
+          name="F(y)"
           stroke={AMBER}
           strokeWidth={2.5}
-          dot={false}
-        />
-        <Line isAnimationActive={false}
-          dataKey="model"
-          name="F lognormal"
-          stroke={BLUE}
-          strokeWidth={2}
-          strokeDasharray="5 3"
           dot={false}
         />
       </LineChart>
