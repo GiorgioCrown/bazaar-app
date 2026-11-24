@@ -113,38 +113,46 @@ def _trim(rec: dict[str, Any]) -> dict[str, Any]:
 
 
 _enrich_lock = threading.Lock()
-_enrich: dict[str, Any] = {"at": 0.0, "records": {}}
+_enrich: dict[str, Any] = {"at": 0.0, "records": {}, "sigs": set()}
 
 
 def _enrichment(base: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """Metadatos reales por sha256. La caché (30 min) recuerda qué familias ya se
+    consultaron: una ventana corta no debe dejar sin enriquecer a las familias
+    que solo alcanzan >= 5 muestras en una ventana mayor."""
     with _enrich_lock:
-        if time.time() - _enrich["at"] < ENRICH_TTL and _enrich["records"]:
-            return _enrich["records"]
+        fresh = time.time() - _enrich["at"] < ENRICH_TTL and bool(_enrich["records"])
         counts: dict[str, int] = {}
         for s in base:
             if s.get("signature"):
                 counts[s["signature"]] = counts.get(s["signature"], 0) + 1
-        sigs = [s for s, c in sorted(counts.items(), key=lambda x: -x[1]) if c >= 5]
-        jobs = [{"query": "get_siginfo", "signature": s, "limit": 1000} for s in sigs]
-        jobs += [
-            {"query": "get_file_type", "file_type": t, "limit": 1000}
-            for t in ENRICH_FILE_TYPES
+        needed = [s for s, c in sorted(counts.items(), key=lambda x: -x[1]) if c >= 5]
+        todo = [s for s in needed if not fresh or s not in _enrich["sigs"]]
+        if fresh and not todo:
+            return _enrich["records"]
+        jobs: list[tuple[str | None, dict[str, Any]]] = [
+            (s, {"query": "get_siginfo", "signature": s, "limit": 1000}) for s in todo
         ]
-        jobs.append({"query": "get_recent", "selector": "100"})
+        if not fresh:
+            jobs += [(None, {"query": "get_file_type", "file_type": t, "limit": 1000}) for t in ENRICH_FILE_TYPES]
+            jobs.append((None, {"query": "get_recent", "selector": "100"}))
 
-        def run(form: dict[str, Any]) -> list[dict[str, Any]]:
+        def run(job: tuple[str | None, dict[str, Any]]) -> tuple[str | None, bool, list[dict[str, Any]]]:
             try:
-                return _post(form).get("data") or []
+                return job[0], True, _post(job[1]).get("data") or []
             except DataUnavailable:
-                return []
+                return job[0], False, []
 
-        records: dict[str, dict[str, Any]] = {}
+        records: dict[str, dict[str, Any]] = dict(_enrich["records"]) if fresh else {}
+        done: set[str] = set(_enrich["sigs"]) if fresh else set()
         with ThreadPoolExecutor(4) as ex:
-            for data in ex.map(run, jobs):
+            for sig, ok, data in ex.map(run, jobs):
+                if ok and sig:
+                    done.add(sig)
                 for s in data:
                     records[s["sha256_hash"]] = _trim(s)
         if records:
-            _enrich.update(at=time.time(), records=records)
+            _enrich.update(at=_enrich["at"] if fresh else time.time(), records=records, sigs=done)
         return records
 
 

@@ -37,3 +37,27 @@ def test_parser_env_minimo(tmp_path):
     f = tmp_path / ".env.local"
     f.write_text('# c\nABUSECH_AUTH_KEY="abc123"\nOTRA=1\n', encoding="utf-8")
     assert data._read_env_file(f)["ABUSECH_AUTH_KEY"] == "abc123"
+
+
+def test_enriquecimiento_no_depende_de_la_primera_ventana(monkeypatch):
+    """Una ventana corta no debe impedir enriquecer familias de una ventana larga."""
+    calls: list[dict] = []
+
+    def fake_post(form, retries=4):
+        calls.append(form)
+        if form["query"] == "get_siginfo":
+            sig = form["signature"]
+            return {"data": [{"sha256_hash": f"{sig}-1", "file_size": 10, "signature": sig}]}
+        return {"data": []}
+
+    monkeypatch.setattr(data, "_post", fake_post)
+    monkeypatch.setitem(data._enrich, "at", 0.0)
+    monkeypatch.setitem(data._enrich, "records", {})
+    monkeypatch.setitem(data._enrich, "sigs", set())
+    corta = [{"signature": "A"}] * 5
+    larga = corta + [{"signature": "B"}] * 5
+    assert set(data._enrichment(corta)) == {"A-1"}
+    assert set(data._enrichment(larga)) == {"A-1", "B-1"}  # B se consulta aunque la caché sea reciente
+    n = len(calls)
+    data._enrichment(larga)
+    assert len(calls) == n  # ya cubierto: sin consultas nuevas
