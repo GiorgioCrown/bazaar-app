@@ -231,7 +231,7 @@ function VarY({ y }: { y: RandomVariables["Y"] }) {
         )}
         <Insight>
           {first
-            ? `De cada 100 muestras, ${Math.round(first.p_empirical * 100)} caen en “${first.label}”. `
+            ? `Según la tabla, ${first.label} = ${pct(first.p_empirical, 1)}: de cada 100 muestras, ${Math.round(first.p_empirical * 100)} son así. `
             : ""}
           El tamaño promedio es {bytes(y.mean)}, pero hay pocos archivos muy grandes que suben el
           promedio.
@@ -247,7 +247,7 @@ function VarY({ y }: { y: RandomVariables["Y"] }) {
             "Y es continua: se mide en bytes y puede ser cualquier valor.",
             `E[Y] = ${bytes(y.mean)}, desviación = ${bytes(y.std)}.`,
             first
-              ? `P(${first.label}) = ${pct(first.p_empirical, 1)}.`
+              ? `${first.label} = ${pct(first.p_empirical, 1)}.`
               : "Las probabilidades se calculan por intervalos.",
           ]}
         />

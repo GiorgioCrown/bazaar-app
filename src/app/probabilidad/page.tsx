@@ -34,7 +34,7 @@ function Verdict({ ok, yes, no }: { ok: boolean; yes: string; no: string }) {
 }
 
 function Events({ p }: { p: Probability }) {
-  const top = [...p.events].sort((a, b) => b.p - a.p)[0];
+  const top = [...p.events].sort((a, b) => b.p - a.p).find((e) => e.p < 0.995) ?? p.events[0];
   return (
     <Panel
       id="eventos"
