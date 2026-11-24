@@ -10,8 +10,9 @@ en ese archivo en el mismo commit.
   El navegador nunca habla con FastAPI ni con abuse.ch. La key
   `ABUSECH_AUTH_KEY` solo la lee Python (de `.env.local` en la raíz del
   proyecto o del entorno).
-- Todo el cómputo estadístico es Python (pandas + numpy; scipy permitido para
-  distribuciones/pruebas). Next.js solo presenta e interpreta.
+- Todo el cómputo estadístico es Python (pandas + numpy). Next.js solo presenta
+  e interpreta. Solo se usan herramientas del temario (sin Poisson ni
+  inferencia); los textos van en palabras simples, aptas para exponer.
 - Parámetro común `hours` (1–168, default 168) = ventana de `recent_detections`.
 - Respuestas JSON, `snake_case`, floats finitos (nunca NaN/Inf: usar `null`).
 - Enteros potencialmente enormes (factoriales, combinaciones) viajan como
@@ -39,7 +40,7 @@ metadatos conservan `NA` (columna `enriched=False`); nada se imputa.
 - `file_size`, `file_type`, `delivery_method`, tags, ClamAV, Ω de
   `/api/probability`, `/api/bayes`, `/api/combinatorics` (perfiles), Y y Z usan
   solo las filas enriquecidas (`Overview.enriched`; `Probability.n` es ese Ω).
-- `Overview` añade `enriched` y `enriched_fraction` (cambio respecto al contrato
+- `Overview` trae `avg_per_hour` (muestras/hora promedio) y añade `enriched` y `enriched_fraction` (cambio respecto al contrato
   inicial; también en `api-types.ts`).
 - Hoy `recent_detections` solo lista muestras con firma, por lo que el evento F
   (sin familia) puede tener conteo 0.
@@ -49,7 +50,7 @@ metadatos conservan `NA` (columna `enriched=False`); nada se imputa.
 |---|---|---|
 | `/api/health` | – | `{status, offline, rows_cached}` |
 | `/api/overview?hours=` | base | `Overview` |
-| `/api/families?hours=` | base (migra `src/lib/stats.ts`) | `Families` |
+| `/api/families?hours=` | base | `Families` |
 | `/api/search?mode=&value=&limit=` | explorador | proxy tipado de abuse.ch (`recent,hash,tag,signature,file_type,clamav`) → `{query_status, data: Sample[]}` |
 | `/api/combinatorics?hours=` | 5 | `Combinatorics` |
 | `/api/combinatorics/calc?n=&k=` | 5 | `CombCalc` (n ≤ 5000, k ≤ n) |
@@ -71,16 +72,15 @@ Ver `src/lib/api-types.ts` para las formas exactas. Resumen de contenido:
 - `permutations`: P(F,k) para k=1..5 (F=familias distintas), 5! rankings del
   top-5, y la permutación de un podio top-3 observado.
 - `combinations`: C(F,k), C(N,k) muestras, pares de tags (`C(t,2)` posibles
-  vs. observados con conteos top), y un cálculo hipergeométrico:
-  P(al menos 1 de la familia líder en una selección de 10 muestras).
+  vs. observados con conteos top).
 - Cada bloque trae `formula`, `inputs`, `result` (string) y `log10`.
 
 ### Descriptive (sección 6)
 Para cada variable (`file_size` continua, `hourly_count` discreta,
-`family_count` discreta, `n_tags` discreta): `n, mean, median, mode(s),
-std (muestral, ddof=1), variance, min, max, range, cv, skewness, kurtosis`,
+`family_count` discreta, `n_tags` discreta): `n, mean, median, modes,
+mode_count, std (muestral, ddof=1), variance, min, max, range`,
 `histogram` {edges, counts, density, scale:"linear"|"log"} (file_size en
-escala log10), y `outliers_iqr` (conteo + cercas).
+escala log10), y `outliers` (conteo + cercas, regla IQR 1.5).
 
 ### Positions (sección 7)
 Por variable: `quartiles {q1,q2,q3,iqr}`, `deciles` d1..d9, `percentiles`
@@ -98,11 +98,9 @@ description, count, p`.
 - `axioms`: `checks[]` {name, passed, detail}: 0≤P≤1 para todo evento,
   P(Ω)=1, suma de la partición por familias (incl. "Sin clasificar") = 1,
   aditividad para eventos disjuntos, complemento, inclusión-exclusión.
-- `independence`: todos los pares (i<j): `p_a, p_b, p_ab, p_a_times_p_b,
-  abs_diff, lift, chi2, p_value, independent (p_value>=0.05)`.
-  Además `test` (`chi2`|`fisher`|`degenerate`) y `min_expected`: si alguna esperada de la
-  tabla 2x2 es < 5 el `p_value` es el de Fisher exacto (el χ² no es fiable); si P(A) o P(B)
-  es 0 o 1 no hay prueba (`degenerate`, `p_value` null, `independent` true por definición).
+- `independence`: todos los pares (i<j): `a, b, p_a, p_b, p_ab,
+  p_a_times_p_b, abs_diff, independent`. Regla simple: A y B son
+  independientes (aprox.) si `abs_diff = |P(A∩B) − P(A)·P(B)| ≤ 0.01`.
 - `conditional`: matriz `P(row | col)` para los eventos + `family_given_file_type`
   (top 6 familias × top 6 file_type, P(familia | file_type)).
 
@@ -114,14 +112,15 @@ permite graficar prior → posterior. Si no hay evidencia, devolver solo prior y
 un ejemplo por defecto (`file_type` más común).
 
 ### RandomVariables (sección 12)
-- `X`: nº de muestras por hora — **discreta**. pmf empírica vs. Poisson(λ),
-  E[X], Var[X], índice de dispersión, χ² de bondad de ajuste (agrupando colas),
-  P(X=k), P(X≥k), alternativa Binomial Negativa (método de momentos) si hay
-  sobredispersión.
-- `Y`: tamaño de archivo en bytes — **continua**. Ajuste lognormal
-  (μ,σ de ln Y), pdf teórica vs. histograma, CDF empírica vs. teórica, KS.
-- `Z`: nº de tags por muestra — **discreta**, pmf empírica, E[Z], Var[Z].
-- Cada una con `kind: "discrete"|"continuous"`, `support`, `description`.
+- `X`: nº de muestras por hora — **discreta**. `pmf` [{k, empirical}],
+  E[X] (`mean`), Var[X] (`variance`), `std`, `tail` [{k, p_equal, p_at_least}]
+  con P(X=k) y P(X≥k).
+- `Z`: nº de tags por muestra — **discreta**, misma forma que X.
+- `Y`: tamaño de archivo en bytes — **continua**. `mean`, `variance`, `std`,
+  `histogram` (bins log), `cdf` [{x, cdf_empirical}] (80 puntos en escala log)
+  y `probabilities` [{label, p_empirical}] por intervalos (<100 KiB,
+  100 KiB–1 MiB, >1 MiB, >10 MiB).
+- Cada una con `id, name, description, kind: "discrete"|"continuous"`, `support`.
 
 ### Viz (sección 13)
 - `family_hour_matrix`: familias top 8 × horas (conteos) para terreno 3D.
