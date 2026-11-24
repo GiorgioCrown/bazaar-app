@@ -7,22 +7,22 @@
 web
 
 ## Stack
-Existing: Next.js 16 (App Router, server components), React 19, Tailwind 4. User requested shadcn/ui components.
+Existing: Next.js 16 (App Router, server components, Cache Components), React 19, Tailwind 4, recharts, three.js for the 3D page. Python FastAPI backend. User requested shadcn/ui components.
 
 ## Users
 Students of Programación 3 / Probabilidad y Estadística presenting the "Análisis probabilístico de malware" project to a professor (academic presentation, projected or delivered as screenshots). Secondary: anyone exploring MalwareBazaar samples.
 
 ## Product Purpose
-Download MalwareBazaar records, classify them by malware family, and analyze occurrence probabilities. Expected deliverable: a report with the statistical distribution of malware families and a probabilistic model of occurrence. Success = results (distribution, probabilities, model fit) are understood at a glance.
+Download MalwareBazaar records, classify them by malware family, and analyze them with the probability and statistics syllabus. Expected deliverable: a report with the statistical distribution of malware families, a probabilistic model of occurrence, and each syllabus topic applied to the real data. Success = results (distribution, probabilities, model fit) are understood at a glance.
 
 ## Positioning
-A live statistical report over real abuse.ch MalwareBazaar data: multinomial family probabilities with Wilson CIs, Poisson arrival rates and a dispersion test, not just a sample list.
+A live statistical report over real abuse.ch MalwareBazaar data that walks through the course syllabus: combinatorics, descriptive statistics, position measures, probability axioms, independence, conditional probability, Bayes and random variables, plus multinomial family probabilities with Wilson CIs and Poisson arrival rates with a dispersion test. Not just a sample list.
 
 ## Operating Context
-Data comes from the MalwareBazaar API (recent_detections, up to 168 h) via server-side fetch with ABUSECH_AUTH_KEY. Spanish-language UI. Times are UTC.
+Architecture: FastAPI (`api/`, pandas + scipy) does all fetching and statistics; Next.js 16 (Server Components + server actions) only presents and interprets, consuming the API through `src/lib/api.ts`. Only Python sees `ABUSECH_AUTH_KEY`. Spanish-language UI. Times are UTC. Contract: `docs/api-contract.md`.
 
 ## Capabilities and Constraints
-Routes: `/` (explorer: recent/hash/tag/signature/file type/ClamAV search), `/analisis` (probabilistic report, range 24h/3d/7d, CSV export at `/analisis/csv`). Stats in `src/lib/stats.ts`. Must not invent data; API key stays server-side.
+Routes: `/analisis` (summary, families, trend, CSV at `/analisis/csv`), `/combinatoria` (topic 5, n,k calculator), `/estadistica` (topics 6-7), `/probabilidad` (topics 8-10), `/bayes` (topic 11, interactive lab), `/variables` (topic 12), `/visualizacion` (3D, topic 13), `/explorador` (sample search). Window of 1-168 h via `?hours=` (server action `setWindow`). Server actions: setWindow, refreshData, runBayes, runCombinatorics, searchSamples; all input validated server-side. Must not invent data; no mocks in the app.
 
 ## Brand Commitments
 User asked: use shadcn/ui components; dark theme with a vivid accent; more intuitive and eye-catching UI; analysis dashboard is the main screen, explorer secondary.
