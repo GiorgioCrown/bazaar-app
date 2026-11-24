@@ -46,7 +46,7 @@ export type Overview = {
   window_start: string | null; // "YYYY-MM-DD HH:MM" UTC
   window_end: string | null;
   distinct_families: number;
-  lambda_total: number; // muestras/hora
+  avg_per_hour: number; // muestras por hora (promedio simple)
   offline: boolean;
   fetched_at: string; // ISO
   /** Muestras con metadatos completos (tamaño, tipo, tags, ClamAV…) */
@@ -59,22 +59,13 @@ export type FamilyStat = {
   family: string;
   count: number;
   p: number;
-  ci_low: number;
-  ci_high: number;
-  rate_per_hour: number;
-  p_next_hour: number;
-  p_next_24h: number;
   first_seen: string | null;
   last_seen: string | null;
 };
 export type Families = {
   families: FamilyStat[];
-  entropy: number;
-  entropy_norm: number;
-  gini_simpson: number;
   top5_share: number;
   hourly: { hour: string; count: number }[];
-  dispersion: { index: number; chi2: number; df: number; p_value: number } | null;
   file_types: { type: string; count: number; p: number }[];
 };
 
@@ -104,14 +95,6 @@ export type Combinatorics = {
   combinations: {
     items: CombItem[];
     tag_pairs: { pair: [string, string]; count: number }[];
-    hypergeometric: {
-      population: number;
-      successes: number;
-      draws: number;
-      family: string;
-      p_at_least_one: number;
-      pmf: { k: number; p: number }[];
-    };
   };
 };
 export type CombCalc = {
@@ -147,9 +130,6 @@ export type DescVar = {
   min: number;
   max: number;
   range: number;
-  cv: number | null;
-  skewness: number | null;
-  kurtosis: number | null;
   histogram: Histogram;
   outliers: { count: number; fence_low: number; fence_high: number };
 };
@@ -194,15 +174,8 @@ export type IndependencePair = {
   p_ab: number;
   p_a_times_p_b: number;
   abs_diff: number;
-  lift: number | null;
-  chi2: number | null;
-  /** p-valor de la prueba indicada en `test` (null si degenerate) */
-  p_value: number | null;
+  /** true si abs_diff <= 0.01 (independencia aproximada) */
   independent: boolean;
-  /** chi2 de Pearson; fisher si alguna esperada < 5 (chi2 no fiable); degenerate si P(A) o P(B) es 0 o 1 */
-  test: "chi2" | "fisher" | "degenerate";
-  /** menor frecuencia esperada de la tabla 2x2 (null si degenerate) */
-  min_expected: number | null;
 };
 export type Probability = {
   n: number;
@@ -262,34 +235,29 @@ export type RvBase = {
   description: string;
   kind: "discrete" | "continuous";
   support: string;
-  mean: number;
-  variance: number;
+  mean: number; // E[V]
+  variance: number; // Var[V]
+  std: number;
 };
+/** X (muestras por hora) y Z (tags por muestra) */
 export type RvDiscrete = RvBase & {
   kind: "discrete";
-  /** pmf empírica vs. modelo */
-  pmf: { k: number; empirical: number; poisson: number; neg_binomial?: number }[];
-  lambda: number;
-  dispersion_index: number;
-  gof: { chi2: number; df: number; p_value: number; model: string } | null;
+  pmf: { k: number; empirical: number }[];
   tail: { k: number; p_equal: number; p_at_least: number }[];
 };
+/** Y (tamaño de archivo en bytes) */
 export type RvContinuous = RvBase & {
   kind: "continuous";
-  lognormal: { mu: number; sigma: number };
-  /** curvas sobre x (bytes) */
-  curve: { x: number; pdf_log: number; cdf_empirical: number; cdf_model: number }[];
   histogram: Histogram;
-  ks: { statistic: number; p_value: number };
-  probabilities: { label: string; p_model: number; p_empirical: number }[];
+  /** 80 puntos en escala log sobre x (bytes) */
+  cdf: { x: number; cdf_empirical: number }[];
+  /** intervalos: <100 KiB, 100 KiB–1 MiB, >1 MiB, >10 MiB */
+  probabilities: { label: string; p_empirical: number }[];
 };
 export type RandomVariables = {
   X: RvDiscrete;
   Y: RvContinuous;
-  Z: RvBase & {
-    kind: "discrete";
-    pmf: { k: number; empirical: number }[];
-  };
+  Z: RvDiscrete;
 };
 
 /* ---------- 13. Visualización ---------- */
