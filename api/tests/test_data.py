@@ -61,3 +61,24 @@ def test_enriquecimiento_no_depende_de_la_primera_ventana(monkeypatch):
     n = len(calls)
     data._enrichment(larga)
     assert len(calls) == n  # ya cubierto: sin consultas nuevas
+
+
+def test_guardar_snapshot_rechaza_datos_que_ya_son_snapshot(monkeypatch, tmp_path):
+    import pytest
+
+    ds = data.Dataset(data.build_df([]), [], True, "2026-01-01T00:00:00+00:00", 168)
+    monkeypatch.setattr(data, "load", lambda hours, allow_offline=True: ds)
+    monkeypatch.setattr(data, "SNAPSHOT_PATH", tmp_path / "snapshot.json")
+    with pytest.raises(data.DataUnavailable):
+        data.save_snapshot()
+    assert not (tmp_path / "snapshot.json").exists()
+
+
+def test_guardar_snapshot_en_vivo_es_atomico(monkeypatch, tmp_path):
+    recs = [{"sha256_hash": "a" * 64, "first_seen": "2026-01-01 10:00:00 UTC", "signature": "X"}]
+    ds = data.Dataset(data.build_df(recs), recs, False, "2026-01-01T00:00:00+00:00", 168)
+    monkeypatch.setattr(data, "load", lambda hours, allow_offline=True: ds)
+    monkeypatch.setattr(data, "SNAPSHOT_PATH", tmp_path / "snapshot.json")
+    assert data.save_snapshot()["saved"] == 1
+    assert data.load_snapshot()["data"] == recs
+    assert [p.name for p in tmp_path.iterdir()] == ["snapshot.json"]

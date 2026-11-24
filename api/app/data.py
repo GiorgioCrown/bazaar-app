@@ -202,6 +202,8 @@ def _filter_hours(records: list[dict[str, Any]], hours: int) -> list[dict[str, A
 def save_snapshot() -> dict[str, Any]:
     """Guarda el ultimo dataset real (168 h) como snapshot."""
     ds = load(168, allow_offline=False)
+    if ds.offline:  # la caché puede venir del propio snapshot: no re-guardar como "nuevo"
+        raise DataUnavailable("Los datos en memoria provienen del snapshot; no hay datos en vivo que guardar.")
     payload = {
         "query_status": "ok",
         "source": "mb-api.abuse.ch recent_detections + get_siginfo/get_file_type/get_recent",
@@ -210,7 +212,9 @@ def save_snapshot() -> dict[str, Any]:
         "data": ds.records,
     }
     SNAPSHOT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    SNAPSHOT_PATH.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    tmp = SNAPSHOT_PATH.with_suffix(".json.tmp")  # escritura atómica: nunca queda un snapshot a medias
+    tmp.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    os.replace(tmp, SNAPSHOT_PATH)
     return {"saved": len(ds.records), "path": "api/data/snapshot.json", "fetched_at": ds.fetched_at}
 
 
