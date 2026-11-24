@@ -192,6 +192,8 @@ function Report({ o, f, hours }: { o: Overview; f: Families; hours: number }) {
           <p className="text-sm text-muted-foreground">
             Ventana pedida: {hours} h; observada: {o.window_hours_observed.toFixed(0)} h. La API puede
             acotar los registros, por eso las tasas usan la ventana realmente observada.
+            {o.enriched != null &&
+              ` Los temas de tamaño, tipo de archivo, tags y ClamAV usan las ${num(o.enriched)} muestras con metadatos completos (${pct(o.enriched_fraction)} del total).`}
             {o.offline && " Los datos provienen de una copia guardada (modo offline)."}
           </p>
         </Panel>
