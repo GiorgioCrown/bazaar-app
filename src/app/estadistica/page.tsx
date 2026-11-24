@@ -111,7 +111,7 @@ function Position({ p, i }: { p: PositionVar; i: number }) {
   return (
     <Panel id={`pos-${p.key}`} index={i} title={p.label}>
       <div className="grid gap-5 lg:grid-cols-2">
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           <Boxplot box={p.boxplot} label={p.label} unit={p.unit} log={log} />
           <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             <Stat label="Q1 (P25)" value={f(q.q1)} />
@@ -148,7 +148,7 @@ function Position({ p, i }: { p: PositionVar; i: number }) {
             <Stat label="P99" value={f(p.highlights.p99)} />
           </dl>
         </div>
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           <div>
             <h3 className="mb-1 font-heading text-lg font-semibold">Curva de percentiles</h3>
             <PercentileChart
