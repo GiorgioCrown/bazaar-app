@@ -82,7 +82,7 @@ function Descriptive({ v, i }: { v: DescVar; i: number }) {
           <Stat label="Rango" value={f(v.range)} />
           <Stat label="Asimetría" value={v.skewness != null ? num(v.skewness, 2) : "—"} note="> 0: cola derecha" />
           <Stat label="Curtosis" value={v.kurtosis != null ? num(v.kurtosis, 2) : "—"} note="exceso; 0 ≈ normal" />
-          <Stat label="Atípicos (IQR)" value={num(v.outliers.count)} note={`cercas ${f(v.outliers.fence_low)} – ${f(v.outliers.fence_high)}`} />
+          <Stat label="Atípicos (IQR)" value={num(v.outliers.count)} note={`cercas ${f(Math.max(v.outliers.fence_low, v.min))} – ${f(v.outliers.fence_high)}`} />
         </dl>
         <div>
           <h3 className="mb-1 font-heading text-lg font-semibold">
@@ -92,7 +92,7 @@ function Descriptive({ v, i }: { v: DescVar; i: number }) {
             histogram={v.histogram}
             label={v.label}
             unit={v.unit === "bytes" ? "bytes" : ""}
-            discrete={v.kind === "discrete" && v.histogram.counts.length <= 30}
+            discrete={v.kind === "discrete"}
           />
         </div>
       </div>

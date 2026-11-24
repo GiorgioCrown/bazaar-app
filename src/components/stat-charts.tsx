@@ -46,10 +46,13 @@ export function HistogramChart({
   const { edges, counts, scale } = histogram;
   const fmt = (v: number) =>
     unit === "bytes" ? fmtBytes(v) : num(v, v % 1 ? 1 : 0);
+  // Barras centradas en enteros (bordes en x.5): se rotula con el valor entero.
+  const centered =
+    discrete && edges.every((e) => Math.abs(e * 2 - Math.round(e * 2)) < 1e-9 && e % 1 !== 0);
   const data = counts.map((c, i) => ({
-    name: discrete ? String(edges[i]) : fmt(edges[i]),
-    range: discrete
-      ? `valor ${edges[i]}`
+    name: centered ? String((edges[i] + edges[i + 1]) / 2) : fmt(edges[i]),
+    range: centered
+      ? `valor ${(edges[i] + edges[i + 1]) / 2}`
       : `${fmt(edges[i])} – ${fmt(edges[i + 1])}`,
     count: c,
   }));
