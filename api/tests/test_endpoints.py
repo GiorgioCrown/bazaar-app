@@ -145,3 +145,13 @@ def test_combinatoria_declara_denominador_de_perfiles(client):
     j = get(client, "/api/combinatorics")
     prod = next(i for i in j["counting"]["items"] if i["id"] == "counting_product")
     assert "100 muestras con metadatos completos" in prod["explanation"]
+
+
+def test_bayes_rechaza_evidencia_malformada_o_excesiva(client):
+    for ev in (["x"], ["foo:bar"], ["clamav:maybe"], ["size_band:huge"], ["file_type:" + "a" * 200], ["file_type:exe"] * 11):
+        r = client.get("/api/bayes", params={"evidence": ev})
+        assert r.status_code == 422 and "detail" in r.json(), ev
+    # inyección: se trata como texto literal -> P(e)=0 -> 422, nunca se evalúa
+    r = client.get("/api/bayes", params={"evidence": ["tag:'; DROP TABLE x;--"]})
+    assert r.status_code == 422
+    assert client.get("/api/bayes", params={"evidence": ["file_type:exe"] * 10}).status_code == 200

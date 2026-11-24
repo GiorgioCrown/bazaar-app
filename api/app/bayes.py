@@ -25,6 +25,7 @@ router = APIRouter(prefix="/api")
 KIB, MIB = 1024, 1024 * 1024
 OTHERS = "Otras"
 FIELDS = ["file_type", "delivery_method", "clamav", "size_band", "tag"]
+MAX_EVIDENCE = 10
 BANDS = {"small": "< 100 KiB", "medium": "100 KiB – 1 MiB", "large": "> 1 MiB"}
 
 
@@ -43,8 +44,12 @@ def evidence_mask(om: pd.DataFrame, field: str, value: str) -> np.ndarray:
 
 
 def parse_evidence(raw: list[str]) -> list[tuple[str, str]]:
+    if len(raw) > MAX_EVIDENCE:
+        raise HTTPException(status_code=422, detail=f"Demasiadas evidencias ({len(raw)}); el máximo es {MAX_EVIDENCE}.")
     out = []
     for item in raw:
+        if len(item) > 120:
+            raise HTTPException(status_code=422, detail="Evidencia demasiado larga (máximo 120 caracteres).")
         if ":" not in item:
             raise HTTPException(status_code=422, detail=f"Evidencia inválida '{item}': use campo:valor (p. ej. file_type:exe).")
         f, v = item.split(":", 1)
