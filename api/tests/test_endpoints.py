@@ -139,3 +139,9 @@ def test_denominador_omega_declarado(client):
     p = get(client, "/api/probability")
     assert "Ω = 100 de las 100" in p["note"]
     assert "Ω = 100 de las 100" in get(client, "/api/bayes")["note"]
+
+
+def test_combinatoria_declara_denominador_de_perfiles(client):
+    j = get(client, "/api/combinatorics")
+    prod = next(i for i in j["counting"]["items"] if i["id"] == "counting_product")
+    assert "100 muestras con metadatos completos" in prod["explanation"]

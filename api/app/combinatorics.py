@@ -96,7 +96,9 @@ def counting_block(om: pd.DataFrame) -> dict:
             possible,
             f"Un perfil elige una familia ({f}), un tipo de archivo ({ft}), una vía de entrega ({dm}) y un estado ClamAV ({cl}) "
             f"a la vez, así que hay {f}·{ft}·{dm}·{cl} = {fmt_big(possible)} perfiles posibles. En los datos solo aparecen "
-            f"{observed} ({observed / possible:.2%}): los atributos están fuertemente correlacionados (no todo se combina con todo).",
+            f"{observed} ({observed / possible:.2%}): los atributos están fuertemente correlacionados (no todo se combina con todo). "
+            f"Cardinalidades y perfiles observados se cuentan solo sobre las {len(om)} muestras con metadatos completos "
+            "(las permutaciones y la hipergeométrica usan todas las muestras con familia de la ventana).",
         ),
         item(
             "counting_sum",
