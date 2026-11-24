@@ -17,9 +17,9 @@ const barlowCondensed = Barlow_Condensed({
 });
 
 export const metadata: Metadata = {
-  title: "Bazaar Board · Análisis probabilístico de malware",
+  title: "Bazaar Board · Probabilidad y estadística con malware",
   description:
-    "Distribución estadística de familias de malware y modelo probabilístico de aparición con datos de MalwareBazaar.",
+    "Familias de malware, probabilidad y estadística con datos reales de MalwareBazaar.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

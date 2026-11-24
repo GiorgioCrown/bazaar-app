@@ -16,14 +16,11 @@ import type { FamilyStat } from "@/lib/api-types";
 
 export type Row = FamilyStat;
 
-type Key = "family" | "count" | "rate_per_hour" | "p_next_hour" | "p_next_24h";
+type Key = "family" | "count";
 
 const COLS: { key: Key; label: string; align?: "right" }[] = [
   { key: "family", label: "Familia" },
-  { key: "count", label: "Muestras · P(familia)", align: "right" },
-  { key: "rate_per_hour", label: "λ / hora", align: "right" },
-  { key: "p_next_hour", label: "P(≥1 en 1 h)", align: "right" },
-  { key: "p_next_24h", label: "P(≥1 en 24 h)", align: "right" },
+  { key: "count", label: "Frecuencia nᵢ · Probabilidad p = nᵢ/N", align: "right" },
 ];
 
 const pct = (x: number, d = 1) => `${(x * 100).toFixed(d)} %`;
@@ -40,9 +37,7 @@ export function FamilyTable({ rows }: { rows: Row[] }) {
     );
     return f.sort((a, b) => {
       const c =
-        key === "family"
-          ? a.family.localeCompare(b.family)
-          : (a[key] as number) - (b[key] as number);
+        key === "family" ? a.family.localeCompare(b.family) : a.count - b.count;
       return c * dir;
     });
   }, [rows, q, key, dir]);
@@ -112,7 +107,7 @@ export function FamilyTable({ rows }: { rows: Row[] }) {
               <TableRow key={r.family}>
                 <TableCell className="font-medium">{r.family}</TableCell>
                 <TableCell>
-                  <div className="ml-auto flex w-56 items-center gap-3">
+                  <div className="ml-auto flex w-64 items-center gap-3">
                     <div
                       className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted"
                       aria-hidden
@@ -122,22 +117,10 @@ export function FamilyTable({ rows }: { rows: Row[] }) {
                         style={{ width: `${(r.p / maxP) * 100}%` }}
                       />
                     </div>
-                    <span className="w-24 text-right tabular-nums">
+                    <span className="w-36 text-right tabular-nums">
                       {r.count.toLocaleString("es-MX")} · {pct(r.p)}
                     </span>
                   </div>
-                  <div className="mt-0.5 text-right text-xs text-muted-foreground">
-                    IC 95 %: {pct(r.ci_low)}–{pct(r.ci_high)}
-                  </div>
-                </TableCell>
-                <TableCell className="text-right tabular-nums">
-                  {r.rate_per_hour.toFixed(2)}
-                </TableCell>
-                <TableCell className="text-right tabular-nums">
-                  <Prob v={r.p_next_hour} />
-                </TableCell>
-                <TableCell className="text-right tabular-nums">
-                  <Prob v={r.p_next_24h} />
                 </TableCell>
               </TableRow>
             ))}
@@ -164,23 +147,5 @@ export function FamilyTable({ rows }: { rows: Row[] }) {
         </button>
       )}
     </div>
-  );
-}
-
-/** Probability cell: lit amber when the family is near-certain to appear. */
-function Prob({ v }: { v: number }) {
-  return (
-    <span
-      className={cn(
-        "rounded-sm px-1.5 py-0.5",
-        v >= 0.9
-          ? "bg-primary/15 font-medium text-primary"
-          : v >= 0.5
-            ? "text-foreground"
-            : "text-muted-foreground",
-      )}
-    >
-      {pct(v)}
-    </span>
   );
 }

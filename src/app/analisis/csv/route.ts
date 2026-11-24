@@ -15,31 +15,9 @@ export async function GET(request: Request) {
   const res = await getFamilies(hours);
   if (!res.ok) return new Response(res.error, { status: 502 });
 
-  const header = [
-    "familia",
-    "muestras",
-    "p",
-    "ic95_inf",
-    "ic95_sup",
-    "lambda_por_hora",
-    "p_al_menos_1_en_1h",
-    "p_al_menos_1_en_24h",
-    "primera_vez",
-    "ultima_vez",
-  ];
+  const header = ["familia", "muestras", "probabilidad", "primera_vez", "ultima_vez"];
   const lines = res.data.families.map((f) =>
-    [
-      f.family,
-      f.count,
-      f.p.toFixed(6),
-      f.ci_low.toFixed(6),
-      f.ci_high.toFixed(6),
-      f.rate_per_hour.toFixed(6),
-      f.p_next_hour.toFixed(6),
-      f.p_next_24h.toFixed(6),
-      f.first_seen,
-      f.last_seen,
-    ]
+    [f.family, f.count, f.p.toFixed(6), f.first_seen, f.last_seen]
       .map(cell)
       .join(","),
   );

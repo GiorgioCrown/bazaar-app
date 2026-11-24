@@ -1,4 +1,4 @@
-import { AlertTriangle, Lightbulb, Link2 } from "lucide-react";
+import { AlertTriangle, Lightbulb, Link2, Mic } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -90,6 +90,24 @@ export function Insight({
         <span className="text-muted-foreground">{children}</span>
       </div>
     </div>
+  );
+}
+
+/** Viñetas con el mensaje clave para exponer; siempre derivadas de los datos. */
+export function Expose({ items }: { items: React.ReactNode[] }) {
+  if (items.length === 0) return null;
+  return (
+    <aside className="rounded-lg border border-border bg-muted/30 p-4">
+      <h3 className="flex items-center gap-2 font-heading text-lg font-semibold">
+        <Mic className="size-4 text-primary" aria-hidden />
+        Para exponer
+      </h3>
+      <ul className="mt-1.5 list-disc space-y-1 pl-5 text-sm leading-relaxed text-foreground/90">
+        {items.map((it, i) => (
+          <li key={i}>{it}</li>
+        ))}
+      </ul>
+    </aside>
   );
 }
 

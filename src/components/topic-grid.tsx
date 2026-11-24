@@ -2,12 +2,12 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
 const TOPICS = [
-  { n: "5", href: "/combinatoria", title: "Análisis combinatorio", text: "Perfiles familia × tipo × entrega, rankings y pares de tags." },
-  { n: "6–7", href: "/estadistica", title: "Descriptiva y posición", text: "Media, mediana, moda, desviación, cuartiles, deciles y boxplot." },
-  { n: "8–10", href: "/probabilidad", title: "Probabilidad", text: "Axiomas, independencia con χ² y probabilidad condicional." },
-  { n: "11", href: "/bayes", title: "Teorema de Bayes", text: "Laboratorio: elige evidencias y mira cómo cambia la familia más probable." },
-  { n: "12", href: "/variables", title: "Variables aleatorias", text: "X (Poisson), Y (lognormal) y Z, con E y Var." },
-  { n: "13", href: "/visualizacion", title: "Visualización 3D", text: "Terreno de familias × horas, histograma 3D y red de co-ocurrencia." },
+  { n: "5", href: "/combinatoria", title: "Conteo", text: "Perfiles posibles, rankings de familias y pares de tags." },
+  { n: "6–7", href: "/estadistica", title: "Estadística descriptiva", text: "Media, mediana, moda, desviación, cuartiles, deciles y boxplot." },
+  { n: "8–10", href: "/probabilidad", title: "Probabilidad", text: "Axiomas, independencia y probabilidad condicional." },
+  { n: "11", href: "/bayes", title: "Teorema de Bayes", text: "Elige evidencias y mira cómo cambia la familia más probable." },
+  { n: "12", href: "/variables", title: "Variables aleatorias", text: "X, Y y Z: esperanza y varianza." },
+  { n: "13", href: "/visualizacion", title: "Visualización 3D", text: "Terreno de familias por hora, histograma 3D y red de familias." },
 ];
 
 export function TopicGrid() {
