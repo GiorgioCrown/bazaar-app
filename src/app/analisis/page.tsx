@@ -95,10 +95,10 @@ function Reading({ f }: { f: Families }) {
               Poisson simple no alcanza: llegan en ráfagas
             </AlertTitle>
             <AlertDescription>
-              Índice de dispersión {d.index.toFixed(1)} (χ² = {d.chi2.toFixed(0)}, gl = {d.df}, p ≈{" "}
-              {d.p_value.toFixed(3)}).{" "}
+              Índice de dispersión {d.index.toFixed(1)} (χ² = {d.chi2.toFixed(0)}, gl = {d.df}, p{" "}
+              {d.p_value < 0.001 ? "< 0.001" : `≈ ${d.p_value.toFixed(3)}`}).{" "}
               {d.index > 1
-                ? "Hay sobredispersión, así que las probabilidades de “al menos una aparición” son una cota inferior."
+                ? "Hay sobredispersión, así que las probabilidades de “al menos una aparición” son optimistas: con ráfagas hay más horas vacías de las que prevé Poisson, así que la probabilidad real de ver al menos una suele ser algo menor."
                 : "Hay subdispersión: las llegadas son más regulares que Poisson."}
             </AlertDescription>
           </Alert>

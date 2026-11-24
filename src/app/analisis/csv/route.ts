@@ -2,7 +2,9 @@ import { getFamilies } from "@/lib/api";
 import { parseHours } from "@/lib/params";
 
 const cell = (v: string | number | null) => {
-  const s = v == null ? "" : String(v);
+  let s = v == null ? "" : String(v);
+  // Evita inyección de fórmulas al abrir el CSV en Excel/Sheets.
+  if (typeof v === "string" && /^[=+@-]/.test(s)) s = `'${s}`;
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 };
 
