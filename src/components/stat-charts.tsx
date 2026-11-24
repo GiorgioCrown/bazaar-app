@@ -91,7 +91,7 @@ export function HistogramChart({
             />
           }
         />
-        <Bar dataKey="count" fill={AMBER} radius={[2, 2, 0, 0]} />
+        <Bar isAnimationActive={false} dataKey="count" fill={AMBER} radius={[2, 2, 0, 0]} />
       </BarChart>
     </ChartContainer>
   );
@@ -170,7 +170,7 @@ export function PercentileChart({
             }}
           />
         ))}
-        <Line dataKey="value" stroke={AMBER} strokeWidth={2.5} dot={false} />
+        <Line isAnimationActive={false} dataKey="value" stroke={AMBER} strokeWidth={2.5} dot={false} />
       </LineChart>
     </ChartContainer>
   );
@@ -258,19 +258,19 @@ export function PmfChart({
         <Legend wrapperStyle={{ fontSize: 12 }} />
         {series.map((s, i) =>
           s.kind === "bar" ? (
-            <Bar
+            <Bar isAnimationActive={false}
               key={s.key}
               dataKey={s.key}
-              name={s.key}
+              name={s.label}
               fill={s.color ?? PALETTE[i % 3]}
               radius={[2, 2, 0, 0]}
               fillOpacity={0.9}
             />
           ) : (
-            <Line
+            <Line isAnimationActive={false}
               key={s.key}
               dataKey={s.key}
-              name={s.key}
+              name={s.label}
               stroke={s.color ?? PALETTE[i % 3]}
               strokeWidth={2.5}
               dot={{ r: 2.5 }}
@@ -356,16 +356,16 @@ export function LognormalPdfChart({
           }
         />
         <Legend wrapperStyle={{ fontSize: 12 }} />
-        <Bar
+        <Bar isAnimationActive={false}
           dataKey="hist"
-          name="hist"
+          name="Datos (densidad)"
           fill={AMBER}
           fillOpacity={0.55}
           barSize={10}
         />
-        <Line
+        <Line isAnimationActive={false}
           dataKey="model"
-          name="model"
+          name="Lognormal ajustada"
           stroke={BLUE}
           strokeWidth={2.5}
           dot={false}
@@ -431,16 +431,16 @@ export function CdfChart({ curve }: { curve: Curve }) {
           }
         />
         <Legend wrapperStyle={{ fontSize: 12 }} />
-        <Line
+        <Line isAnimationActive={false}
           dataKey="emp"
-          name="emp"
+          name="F empírica"
           stroke={AMBER}
           strokeWidth={2.5}
           dot={false}
         />
-        <Line
+        <Line isAnimationActive={false}
           dataKey="model"
-          name="model"
+          name="F lognormal"
           stroke={BLUE}
           strokeWidth={2}
           strokeDasharray="5 3"
@@ -509,7 +509,7 @@ export function RankBars({
             />
           }
         />
-        <Bar dataKey="value" radius={3}>
+        <Bar isAnimationActive={false} dataKey="value" radius={3}>
           {data.map((d, i) => (
             <Cell
               key={d.label}
@@ -581,7 +581,7 @@ export function PriorPosteriorChart({
             <ChartTooltipContent
               formatter={(v, name) => (
                 <div className="flex w-full justify-between gap-4">
-                  <span>{config[name as keyof typeof config]?.label}</span>
+                  <span>{config[name as keyof typeof config]?.label ?? name}</span>
                   <span className="tabular-nums">
                     {(Number(v) * 100).toFixed(2)} %
                   </span>
@@ -591,8 +591,8 @@ export function PriorPosteriorChart({
           }
         />
         <Legend wrapperStyle={{ fontSize: 12 }} />
-        <Bar dataKey="prior" name="prior" fill={BLUE} radius={3} />
-        <Bar dataKey="posterior" name="posterior" fill={AMBER} radius={3} />
+        <Bar isAnimationActive={false} dataKey="prior" name="A priori P(h)" fill={BLUE} radius={3} />
+        <Bar isAnimationActive={false} dataKey="posterior" name="A posteriori P(h | evidencia)" fill={AMBER} radius={3} />
       </BarChart>
     </ChartContainer>
   );
