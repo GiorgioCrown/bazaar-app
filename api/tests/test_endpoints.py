@@ -133,3 +133,9 @@ def test_viz_y_familias(client):
     assert f["gini_simpson"] == pytest.approx(1 - (0.36 + 0.16))
     o = get(client, "/api/overview")
     assert o["total"] == 100 and o["classified"] == 100 and o["enriched"] == 100
+
+
+def test_denominador_omega_declarado(client):
+    p = get(client, "/api/probability")
+    assert "Ω = 100 de las 100" in p["note"]
+    assert "Ω = 100 de las 100" in get(client, "/api/bayes")["note"]

@@ -93,6 +93,8 @@ de valores concretos (p. ej. el tamaño de la muestra mediana, 1 MiB).
 ventana): A `exe/dll` (PE), B familia líder, C tamaño > 1 MiB, D con tags,
 E detectada por ClamAV, F sin familia (`signature` nulo). Cada uno: `id, name,
 description, count, p`.
+- `note`: denominador Ω (n de total, % enriquecido) y aviso de sesgo: `get_siginfo` limita a 1000
+  muestras por familia, así que familias muy grandes quedan subrepresentadas en Ω.
 - `axioms`: `checks[]` {name, passed, detail}: 0≤P≤1 para todo evento,
   P(Ω)=1, suma de la partición por familias (incl. "Sin clasificar") = 1,
   aditividad para eventos disjuntos, complemento, inclusión-exclusión.

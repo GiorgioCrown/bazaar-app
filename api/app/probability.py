@@ -28,6 +28,22 @@ def omega(df: pd.DataFrame) -> pd.DataFrame:
     return df[df["enriched"]].reset_index(drop=True)
 
 
+def omega_note(df: pd.DataFrame, om: pd.DataFrame) -> str:
+    """Declara el denominador y el posible sesgo del enriquecimiento (Ω ⊂ ventana)."""
+    total, n = len(df), len(om)
+    txt = (
+        f"Denominador: Ω = {n} de las {total} muestras de la ventana ({n / total:.1%}) con metadatos completos "
+        "(tamaño, tipo, tags, ClamAV); las demás no se imputan y quedan fuera de estas probabilidades. "
+        "El enriquecimiento es parcial (get_siginfo ≤ 1000 muestras por familia; solo familias con ≥ 5 muestras y 20 tipos "
+        "de archivo comunes), así que Ω puede subrepresentar familias muy grandes o raras"
+    )
+    fam = df["family"].dropna().value_counts()
+    if len(fam):
+        lead = fam.index[0]
+        txt += f" (p. ej. {lead}: {int(fam.iloc[0])} muestras en la ventana, {int((om['family'] == lead).sum())} en Ω)"
+    return txt + "."
+
+
 def build_events(om: pd.DataFrame) -> tuple[dict[str, np.ndarray], dict[str, tuple[str, str]], str]:
     """Máscaras booleanas de cada evento + (nombre, descripción)."""
     lead = om["family"].value_counts().index[0] if om["family"].notna().any() else "(ninguna)"
@@ -155,7 +171,8 @@ def family_given_file_type(om: pd.DataFrame) -> dict:
 
 @router.get("/probability", response_model=Probability)
 def probability(hours: Hours = 168) -> dict:
-    om = omega(get_dataset(hours).df)
+    df = get_dataset(hours).df
+    om = omega(df)
     n = len(om)
     if n == 0:
         from fastapi import HTTPException
@@ -199,6 +216,7 @@ def probability(hours: Hours = 168) -> dict:
     return clean(
         {
             "n": n,
+            "note": omega_note(df, om),
             "events": events,
             "axioms": {"checks": checks, "partition_sum": psum},
             "independence": indep,

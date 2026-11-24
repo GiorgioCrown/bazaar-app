@@ -206,6 +206,8 @@ export type IndependencePair = {
 };
 export type Probability = {
   n: number;
+  /** denominador Ω y advertencia de sesgo por enriquecimiento parcial */
+  note: string;
   events: EventInfo[];
   axioms: { checks: AxiomCheck[]; partition_sum: number };
   independence: IndependencePair[];

@@ -341,6 +341,7 @@ class Conditional(BaseModel):
 
 class Probability(BaseModel):
     n: int
+    note: str
     events: list[EventInfo]
     axioms: Axioms
     independence: list[IndependencePair]

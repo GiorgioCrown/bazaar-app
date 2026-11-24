@@ -17,7 +17,7 @@ from fastapi import APIRouter, HTTPException, Query
 
 from .deps import Hours, get_dataset
 from .models import Bayes
-from .probability import omega
+from .probability import omega, omega_note
 from .util import clean
 
 router = APIRouter(prefix="/api")
@@ -65,7 +65,8 @@ def bayes(
     evidence: Annotated[list[str] | None, Query(description="campo:valor, repetible")] = None,
 ) -> dict:
     ev = parse_evidence(evidence or [])
-    om = omega(get_dataset(hours).df)
+    df = get_dataset(hours).df
+    om = omega(df)
     n = len(om)
     if n == 0:
         raise HTTPException(status_code=422, detail="No hay muestras con metadatos completos en la ventana.")
@@ -104,7 +105,8 @@ def bayes(
     ft_top = om["file_type"].value_counts()
     tag_counts = om["tags"].explode().dropna().value_counts()
     note = (
-        f"Espacio muestral: {n} muestras con metadatos completos de la ventana. Hipótesis: las 8 familias más frecuentes y «{OTHERS}». "
+        f"{omega_note(df, om)} El prior de las familias usa solo Ω y puede diferir de /api/families. "
+        f"Hipótesis: las 8 familias más frecuentes y «{OTHERS}». "
         "Verosimilitudes = frecuencias relativas P(e|familia) sin suavizado. Al encadenar evidencias se supone independencia "
         "condicional dado la familia (naive Bayes), supuesto que rara vez se cumple del todo (p. ej. tipo de archivo y tamaño están relacionados)."
     )
