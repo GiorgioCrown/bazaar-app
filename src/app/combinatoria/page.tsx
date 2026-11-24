@@ -3,9 +3,9 @@ import type { CombItem, Combinatorics } from "@/lib/api-types";
 import { parseHours, type SP } from "@/lib/params";
 import { bigInt, digits, num, pct } from "@/lib/format";
 import { PageHeader } from "@/components/window-controls";
-import { ApiError, Insight, Panel, Relation, Stat } from "@/components/section";
+import { ApiError, Expose, Insight, Panel, Relation, Stat } from "@/components/section";
 import { CombCalculator } from "@/components/comb-calculator";
-import { PmfChart, RankBars } from "@/components/stat-charts";
+import { RankBars } from "@/components/stat-charts";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -50,18 +50,17 @@ function Items({ items }: { items: CombItem[] }) {
 
 function Report({ c, hours }: { c: Combinatorics; hours: number }) {
   const { counting, permutations, combinations } = c;
-  const hyp = combinations.hypergeometric;
   const profiles = counting.top_profiles.slice(0, 8);
   const pairs = combinations.tag_pairs.slice(0, 10);
   void hours;
   return (
     <div className="mt-8 space-y-6">
-      <Panel index={0} title="Tres herramientas de conteo">
+      <Panel index={0} title="Tres formas de contar">
         <div className="grid gap-4 md:grid-cols-3">
           {[
-            ["Principio de conteo", "Si un proceso tiene m1 · m2 · … pasos independientes, hay m1 × m2 × … resultados. La regla de la suma aplica cuando las opciones son excluyentes (una u otra).", "n₁ · n₂ · … · nᵣ"],
-            ["Permutaciones", "Ordenar o elegir k elementos de n cuando el orden importa (un ranking, un podio).", "P(n,k) = n! / (n−k)!"],
-            ["Combinaciones", "Elegir k elementos de n cuando el orden no importa (un subconjunto, un par de tags).", "C(n,k) = n! / (k!(n−k)!)"],
+            ["Principio de conteo", "Si hay varios pasos, se multiplican las opciones de cada uno. Ejemplo: 3 tipos de archivo y 2 formas de entrega dan 3 × 2 = 6 perfiles.", "n₁ · n₂ · … · nᵣ"],
+            ["Permutaciones", "Elegir k de n cuando el orden importa. Ejemplo: un podio 1.º, 2.º, 3.º.", "P(n,k) = n! / (n−k)!"],
+            ["Combinaciones", "Elegir k de n cuando el orden no importa. Ejemplo: un par de tags.", "C(n,k) = n! / (k!(n−k)!)"],
           ].map(([t, d, f]) => (
             <div key={t} className="rounded-lg border border-border bg-background/40 p-4">
               <h3 className="font-heading text-lg font-semibold">{t}</h3>
@@ -77,7 +76,7 @@ function Report({ c, hours }: { c: Combinatorics; hours: number }) {
         index={1}
         topic="Tema 5 · Principio fundamental"
         title="Perfiles posibles: familia × tipo × entrega"
-        hint="Cada muestra tiene un “perfil”: un valor en cada dimensión. El principio multiplicativo cuenta cuántos perfiles distintos podrían existir."
+        hint="Cada muestra tiene un “perfil”: un valor en cada dimensión. Se multiplican las opciones de cada dimensión."
       >
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
           <div className="overflow-hidden rounded-lg border border-border">
@@ -114,9 +113,8 @@ function Report({ c, hours }: { c: Combinatorics; hours: number }) {
         </div>
         <div className="mt-4 space-y-3">
           <Insight>
-            De {bigInt(counting.possible_profiles)} combinaciones teóricas solo aparecen{" "}
-            {num(counting.observed_profiles)}: el malware real se concentra en muy pocos perfiles
-            (ciertas familias suelen usar un tipo de archivo y un canal de entrega concretos).
+            Podrían existir {bigInt(counting.possible_profiles)} perfiles, pero solo aparecen{" "}
+            {num(counting.observed_profiles)}. Es decir, el malware real repite pocos perfiles.
           </Insight>
           {profiles.length > 0 && (
             <>
@@ -137,7 +135,7 @@ function Report({ c, hours }: { c: Combinatorics; hours: number }) {
         index={2}
         topic="Tema 5 · Permutaciones"
         title="Rankings: el orden importa"
-        hint="Un podio “1.º, 2.º, 3.º” es una permutación: distinto orden, distinto resultado."
+        hint="Un podio es una permutación: si cambia el orden, cambia el resultado."
       >
         <Items items={permutations.items} />
         {permutations.observed_podium.length > 0 && (
@@ -154,9 +152,8 @@ function Report({ c, hours }: { c: Combinatorics; hours: number }) {
             </ol>
             <div className="mt-3">
               <Insight>
-                De todos los podios posibles solo uno ocurrió en realidad. Si las familias fueran
-                intercambiables, cada orden sería igual de probable; que uno solo ocurra
-                sugiere una jerarquía (esta ventana no basta para afirmar que se repita).
+                Hay muchos podios posibles, pero solo uno es el real. Con otra ventana de horas podría
+                cambiar.
               </Insight>
             </div>
           </div>
@@ -171,43 +168,20 @@ function Report({ c, hours }: { c: Combinatorics; hours: number }) {
         hint="Elegir muestras, familias o pares de tags sin importar cuál va primero."
       >
         <Items items={combinations.items} />
-        <div className="mt-6 grid gap-6 lg:grid-cols-2">
-          <div>
-            <h3 className="font-heading text-lg font-semibold">Pares de tags más frecuentes</h3>
-            <p className="mb-2 text-sm text-muted-foreground">
-              Cada par {"{a, b}"} es una combinación C(t, 2); los de arriba aparecen juntos en más muestras.
-            </p>
-            {pairs.length > 0 ? (
-              <RankBars
-                label="Pares de tags más frecuentes"
-                data={pairs.map((p) => ({ label: `${p.pair[0]} + ${p.pair[1]}`, value: p.count }))}
-                labelWidth={200}
-              />
-            ) : (
-              <p className="text-sm text-muted-foreground">No hay muestras con dos o más tags.</p>
-            )}
-          </div>
-          <div>
-            <h3 className="font-heading text-lg font-semibold">
-              Selección al azar de {hyp.draws} muestras (hipergeométrica)
-            </h3>
-            <p className="mb-2 text-sm text-muted-foreground">
-              De {num(hyp.population)} muestras hay {num(hyp.successes)} de {hyp.family}. Al escoger{" "}
-              {hyp.draws} sin reemplazo, P(k de {hyp.family}) = C({hyp.successes}, k) · C(
-              {hyp.population - hyp.successes}, {hyp.draws}−k) / C({hyp.population}, {hyp.draws}).
-            </p>
-            <PmfChart
-              label={`Distribución hipergeométrica del número de muestras de ${hyp.family} en ${hyp.draws} elegidas`}
-              data={hyp.pmf.map((d) => ({ k: d.k, p: d.p }))}
-              series={[{ key: "p", label: "P(K = k)", kind: "bar" }]}
-              xLabel={`k = nº de ${hyp.family}`}
-              height={220}
+        <div className="mt-6">
+          <h3 className="font-heading text-lg font-semibold">Pares de tags más frecuentes</h3>
+          <p className="mb-2 text-sm text-muted-foreground">
+            Cada par {"{a, b}"} es una combinación C(t, 2). Los de arriba aparecen juntos en más muestras.
+          </p>
+          {pairs.length > 0 ? (
+            <RankBars
+              label="Pares de tags más frecuentes"
+              data={pairs.map((p) => ({ label: `${p.pair[0]} + ${p.pair[1]}`, value: p.count }))}
+              labelWidth={200}
             />
-            <Insight className="mt-2">
-              La probabilidad de que al menos una de las {hyp.draws} muestras sea {hyp.family} es{" "}
-              <b className="text-foreground">{pct(hyp.p_at_least_one, 2)}</b>.
-            </Insight>
-          </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No hay muestras con dos o más tags.</p>
+          )}
         </div>
       </Panel>
 
@@ -215,25 +189,30 @@ function Report({ c, hours }: { c: Combinatorics; hours: number }) {
         id="calculadora"
         index={4}
         title="Calculadora combinatoria"
-        hint="Escribe n y k: un server action los valida y la API devuelve los enteros exactos."
+        hint="Escribe n y k y obtén P(n,k), C(n,k) y n^k."
       >
         <CombCalculator defaultN={counting.dimensions[0]?.cardinality} />
       </Panel>
 
-      <Panel index={5} title="Qué aporta al problema">
-        <Relation>
-          <p>
-            Antes de hablar de probabilidades hay que contar: el <b>espacio de perfiles</b> (familia ×
-            tipo × entrega) es enorme, pero solo una fracción diminuta ocurre, así que un modelo
-            razonable no puede tratar todos los perfiles como equiprobables.
-          </p>
-          <p>
-            Los <b>rankings</b> (top-5, podio) son permutaciones: hay n! órdenes posibles y solo uno es
-            el real. Los <b>pares de tags</b> son combinaciones: cuentan qué etiquetas suelen ir juntas
-            sin importar el orden. La hipergeométrica conecta el conteo con la probabilidad: se
-            calcula como casos favorables entre casos posibles, con C(n,k) en ambos lados.
-          </p>
-        </Relation>
+      <Panel index={5} title="Cómo se relaciona con el problema">
+        <div className="space-y-3">
+          <Insight>
+            Contar es el primer paso: antes de dar probabilidades hay que saber cuántos casos hay.
+          </Insight>
+          <Relation>
+            <p>
+              Los perfiles posibles son muchos, pero pocos ocurren. El ranking de familias es una
+              permutación. Los pares de tags son combinaciones.
+            </p>
+          </Relation>
+          <Expose
+            items={[
+              `De ${bigInt(counting.possible_profiles)} perfiles posibles, solo ${num(counting.observed_profiles)} aparecen.`,
+              "Permutación: importa el orden. Combinación: no importa.",
+              "n! cuenta las formas de ordenar n elementos.",
+            ]}
+          />
+        </div>
       </Panel>
     </div>
   );
@@ -246,7 +225,7 @@ export default async function Combinatoria({ searchParams }: { searchParams: Pro
     <main className="mx-auto w-full max-w-7xl px-4 py-8">
       <PageHeader
         title="Análisis combinatorio"
-        lead="Principio de conteo, permutaciones y combinaciones aplicados a perfiles de malware, rankings de familias y pares de tags."
+        lead="Conteo, permutaciones y combinaciones con perfiles de malware, rankings de familias y pares de tags."
         path="/combinatoria"
         hours={hours}
       />
