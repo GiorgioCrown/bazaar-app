@@ -94,6 +94,7 @@ def variable_x(x: np.ndarray) -> dict:
     ]
     desc = (
         f"Número de muestras reportadas por hora UTC en la ventana (n = {n} horas). Variable aleatoria DISCRETA con soporte {{0, 1, 2, …}}. "
+        "Se cuentan todas las horas UTC de la ventana; la primera y la última pueden estar incompletas y aportan algo de varianza extra. "
         f"E[X] = {mean:.2f}, Var[X] = {var:.2f}, índice de dispersión Var/E = {index:.2f} "
         + ("(≈1 sería compatible con Poisson; aquí hay sobredispersión: las llegadas vienen en ráfagas)." if index > 1.5 else "(cercano a 1: compatible con Poisson).")
     )
