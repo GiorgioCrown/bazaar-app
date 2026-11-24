@@ -50,8 +50,16 @@ def build_events(om: pd.DataFrame) -> tuple[dict[str, np.ndarray], dict[str, tup
     return masks, info, lead
 
 
-def chi2_pair(a: np.ndarray, b: np.ndarray) -> tuple[float | None, float | None]:
-    """Chi² de Pearson (sin corrección de Yates) sobre la tabla 2x2 de A y B."""
+def independence_test(a: np.ndarray, b: np.ndarray) -> dict:
+    """Prueba de independencia sobre la tabla 2x2 de A y B.
+
+    - Si algún evento es imposible o seguro (marginal nula) no hay prueba: se
+      reporta ``test="degenerate"``; matemáticamente P(A∩B)=P(A)P(B) se cumple.
+    - Si alguna frecuencia esperada < 5, el χ² de Pearson no es fiable: el
+      p-valor es el de la prueba exacta de Fisher (``test="fisher"``).
+    - En otro caso χ² de Pearson sin corrección de Yates (``test="chi2"``).
+    El χ² (y las esperadas mínimas) se informan siempre que estén definidos.
+    """
     t = np.array(
         [
             [np.sum(a & b), np.sum(a & ~b)],
@@ -59,9 +67,13 @@ def chi2_pair(a: np.ndarray, b: np.ndarray) -> tuple[float | None, float | None]
         ]
     )
     if (t.sum(axis=0) == 0).any() or (t.sum(axis=1) == 0).any():
-        return None, None
-    chi2, p, _, _ = stats.chi2_contingency(t, correction=False)
-    return float(chi2), float(p)
+        return {"chi2": None, "p_value": None, "test": "degenerate", "min_expected": None}
+    chi2, p, _, expected = stats.chi2_contingency(t, correction=False)
+    min_e = float(expected.min())
+    test = "chi2"
+    if min_e < 5:
+        test, p = "fisher", float(stats.fisher_exact(t)[1])
+    return {"chi2": float(chi2), "p_value": float(p), "test": test, "min_expected": min_e}
 
 
 def axiom_checks(om: pd.DataFrame, masks: dict, info: dict, p: dict[str, float], n: int) -> tuple[list[dict], float]:
@@ -160,7 +172,8 @@ def probability(hours: Hours = 168) -> dict:
     for a, b in combinations(IDS, 2):
         pab = float((masks[a] & masks[b]).sum() / n)
         prod = p[a] * p[b]
-        chi2, pv = chi2_pair(masks[a], masks[b])
+        it = independence_test(masks[a], masks[b])
+        pv = it["p_value"]
         indep.append(
             {
                 "a": a,
@@ -171,8 +184,10 @@ def probability(hours: Hours = 168) -> dict:
                 "p_a_times_p_b": prod,
                 "abs_diff": abs(pab - prod),
                 "lift": pab / prod if prod > 0 else None,
-                "chi2": chi2,
+                "chi2": it["chi2"],
                 "p_value": pv,
+                "test": it["test"],
+                "min_expected": it["min_expected"],
                 "independent": True if pv is None else pv >= 0.05,
             }
         )

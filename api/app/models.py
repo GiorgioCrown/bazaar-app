@@ -322,6 +322,8 @@ class IndependencePair(BaseModel):
     chi2: float | None
     p_value: float | None
     independent: bool
+    test: Literal["chi2", "fisher", "degenerate"]
+    min_expected: float | None
 
 
 class FamilyGivenFileType(BaseModel):

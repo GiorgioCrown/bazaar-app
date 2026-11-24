@@ -48,7 +48,7 @@ Todos aceptan `?hours=1..168` (default 168), excepto `search` y `calc`.
 - **Probabilidad (8-10)**: Ω = muestras con metadatos completos; P(E)=|E|/|Ω|.
   Independencia: χ² de Pearson 2×2 sin corrección de Yates, α = 0.05 (con n
   grande casi todo se rechaza: se interpreta junto con `lift` y `abs_diff`).
-  Si P(F)=0 el χ² no está definido → `null`.
+  Si alguna esperada < 5 se usa Fisher exacto; si un evento es imposible/seguro (p. ej. F) no hay prueba (`null`).
 - **Bayes**: P(h|e)=P(e|h)P(h)/Σ_h P(e|h)P(h), sin suavizado; evidencias
   encadenadas = naive Bayes (independencia condicional). Evidencia imposible → 422.
 - **X** (muestras/hora): Poisson(λ=x̄) vs. Binomial Negativa por momentos

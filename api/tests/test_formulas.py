@@ -132,3 +132,42 @@ def test_gof_ajuste_perfecto_da_chi2_cero():
 def test_clean_elimina_nan_e_inf():
     out = clean({"a": float("nan"), "b": [float("inf"), 1.5], "c": np.int64(3), "d": np.float64("nan")})
     assert out == {"a": None, "b": [None, 1.5], "c": 3, "d": None}
+
+
+# ---------------------------------------------------------------- independencia 2x2
+def test_independencia_chi2_tabla_conocida():
+    import numpy as np
+    from scipy import stats
+
+    from app.probability import independence_test
+
+    # tabla [[30,20],[20,30]] (n=100, esperadas 25): chi2 = 4 sin Yates, gl=1
+    a = np.array([True] * 50 + [False] * 50)
+    b = np.array([True] * 30 + [False] * 20 + [True] * 20 + [False] * 30)
+    r = independence_test(a, b)
+    assert r["test"] == "chi2" and r["min_expected"] == pytest.approx(25.0)
+    assert r["chi2"] == pytest.approx(4.0) and r["p_value"] == pytest.approx(stats.chi2.sf(4.0, 1))
+
+
+def test_independencia_esperadas_pequenas_usa_fisher():
+    import numpy as np
+    from scipy import stats
+
+    from app.probability import independence_test
+
+    # B casi seguro: la celda esperada de ~B es < 5, chi2 no es fiable
+    a = np.array([True] * 10 + [False] * 90)
+    b = np.array([True] * 9 + [False] * 1 + [True] * 89 + [False] * 1)
+    r = independence_test(a, b)
+    assert r["test"] == "fisher" and r["min_expected"] < 5
+    assert r["p_value"] == pytest.approx(stats.fisher_exact([[9, 1], [89, 1]])[1])
+
+
+def test_independencia_evento_imposible_es_degenerado():
+    import numpy as np
+
+    from app.probability import independence_test
+
+    a = np.array([True, False, True, False])
+    r = independence_test(a, np.zeros(4, dtype=bool))
+    assert r == {"chi2": None, "p_value": None, "test": "degenerate", "min_expected": None}

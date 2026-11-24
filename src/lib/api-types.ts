@@ -196,8 +196,13 @@ export type IndependencePair = {
   abs_diff: number;
   lift: number | null;
   chi2: number | null;
+  /** p-valor de la prueba indicada en `test` (null si degenerate) */
   p_value: number | null;
   independent: boolean;
+  /** chi2 de Pearson; fisher si alguna esperada < 5 (chi2 no fiable); degenerate si P(A) o P(B) es 0 o 1 */
+  test: "chi2" | "fisher" | "degenerate";
+  /** menor frecuencia esperada de la tabla 2x2 (null si degenerate) */
+  min_expected: number | null;
 };
 export type Probability = {
   n: number;
