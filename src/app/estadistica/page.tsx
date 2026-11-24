@@ -3,7 +3,7 @@ import type { DescVar, PositionVar } from "@/lib/api-types";
 import { parseHours, type SP } from "@/lib/params";
 import { bytes, num } from "@/lib/format";
 import { PageHeader } from "@/components/window-controls";
-import { ApiError, Insight, Panel, Relation, Stat } from "@/components/section";
+import { ApiError, Expose, Insight, Panel, Relation, Stat } from "@/components/section";
 import { Boxplot } from "@/components/boxplot";
 import { HistogramChart, PercentileChart } from "@/components/stat-charts";
 import {
@@ -27,31 +27,33 @@ const WHAT: Record<string, string> = {
   n_tags: "cuántas etiquetas (tags) lleva una muestra",
 };
 
+const RELATION: Record<string, string> = {
+  file_size: "El tamaño ayuda a distinguir archivos normales de los muy grandes. La mediana es un mejor “típico” que la media.",
+  hourly_count: "Dice cuántas muestras esperamos en una hora normal y cuánto se aleja una hora de ese valor.",
+  family_count: "Muestra qué tan desiguales son las familias: pocas con muchas muestras y muchas con pocas.",
+  n_tags: "Dice cuánta información acompaña normalmente a una muestra.",
+};
+
 function describe(v: DescVar) {
   const f = fmtFor(v.unit);
-  const skew = v.skewness ?? 0;
+  const gap = v.median > 0 ? v.mean / v.median : null;
   const shape =
-    skew > 0.5
-      ? "sesgada a la derecha: la mayoría de los valores es pequeña y unos pocos muy grandes jalan la media hacia arriba"
-      : skew < -0.5
-        ? "sesgada a la izquierda: unos pocos valores muy pequeños jalan la media hacia abajo"
-        : "aproximadamente simétrica";
-  const gap =
-    v.median > 0 ? v.mean / v.median : null;
+    gap && gap > 1.15
+      ? "La media es mayor que la mediana: unos pocos valores muy grandes la jalan hacia arriba."
+      : gap && gap < 0.87
+        ? "La media es menor que la mediana: unos pocos valores muy chicos la jalan hacia abajo."
+        : "La media y la mediana están cerca: los datos son bastante parejos.";
   const modeTxt = v.modes.length
-    ? `El valor más repetido (moda) es ${v.modes.slice(0, 3).map(f).join(", ")}${v.modes.length > 3 ? "…" : ""}, ${v.mode_count} veces.`
+    ? ` El valor que más se repite (moda) es ${v.modes.slice(0, 3).map(f).join(", ")}${v.modes.length > 3 ? "…" : ""}, ${v.mode_count} veces.`
     : "";
   return (
     <>
-      Para {WHAT[v.key] ?? v.label}, la media es {f(v.mean)} y la mediana {f(v.median)}
-      {gap && Math.abs(gap - 1) > 0.15
-        ? ` (la media es ${gap > 1 ? `${gap.toFixed(1)} veces la mediana` : "menor que la mediana"})`
-        : ""}
-      . La distribución es {shape}. {modeTxt} La desviación estándar de {f(v.std)} indica
-      {v.cv != null ? ` una dispersión relativa (CV) de ${num(v.cv * 100, 0)} %` : " la dispersión típica"}
+      Para {WHAT[v.key] ?? v.label}: media {f(v.mean)} y mediana {f(v.median)}. {shape}
+      {modeTxt} La desviación estándar es {f(v.std)}: es lo que se alejan, en promedio, los datos de la
+      media.
       {v.outliers.count > 0
-        ? `; ${num(v.outliers.count)} valores caen fuera de las cercas del rango intercuartílico (atípicos).`
-        : "; no hay atípicos según el criterio del rango intercuartílico."}
+        ? ` Hay ${num(v.outliers.count)} valores atípicos (muy lejos del resto, según el IQR).`
+        : " No hay valores atípicos según el IQR."}
     </>
   );
 }
@@ -74,14 +76,11 @@ function Descriptive({ v, i }: { v: DescVar; i: number }) {
             value={v.modes.length ? f(v.modes[0]) : "—"}
             note={v.modes.length > 1 ? `y ${v.modes.length - 1} más empatadas` : `${v.mode_count} veces`}
           />
-          <Stat label="Desv. estándar s" value={f(v.std)} note="muestral (n − 1)" />
+          <Stat label="Desv. estándar s" value={f(v.std)} note="se divide entre n − 1" />
           <Stat label="Varianza s²" value={v.unit === "bytes" ? v.variance.toExponential(2) : num(v.variance, 2)} />
-          <Stat label="CV" value={v.cv != null ? `${num(v.cv * 100, 0)} %` : "—"} note="s / media" />
           <Stat label="Mínimo" value={f(v.min)} />
           <Stat label="Máximo" value={f(v.max)} />
           <Stat label="Rango" value={f(v.range)} />
-          <Stat label="Asimetría" value={v.skewness != null ? num(v.skewness, 2) : "—"} note="> 0: cola derecha" />
-          <Stat label="Curtosis" value={v.kurtosis != null ? num(v.kurtosis, 2) : "—"} note="exceso; 0 ≈ normal" />
           <Stat label="Atípicos (IQR)" value={num(v.outliers.count)} note={`cercas ${f(Math.max(v.outliers.fence_low, v.min))} – ${f(v.outliers.fence_high)}`} />
         </dl>
         <div>
@@ -98,6 +97,11 @@ function Descriptive({ v, i }: { v: DescVar; i: number }) {
       </div>
       <div className="mt-4">
         <Insight>{describe(v)}</Insight>
+        <div className="mt-3">
+          <Relation>
+            <p>{RELATION[v.key] ?? "Resume la variable con un solo número típico y su variación."}</p>
+          </Relation>
+        </div>
       </div>
     </Panel>
   );
@@ -189,13 +193,21 @@ function Position({ p, i }: { p: PositionVar; i: number }) {
       </div>
       <div className="mt-4">
         <Insight>
-          El 50 % central de los datos ({p.label.toLowerCase()}) está entre {f(q.q1)} y {f(q.q3)} (rango
-          intercuartílico {f(q.iqr)}). El P90 es {f(p.highlights.p90)}: solo 1 de cada 10 valores lo
-          supera, y el P99 ({f(p.highlights.p99)}) marca los casos verdaderamente extremos
+          La mitad central de los datos ({p.label.toLowerCase()}) está entre {f(q.q1)} y {f(q.q3)}. El P90
+          es {f(p.highlights.p90)}: solo 1 de cada 10 valores lo supera.
           {p.boxplot.max > p.boxplot.whisker_high
-            ? `; el máximo (${f(p.boxplot.max)}) queda fuera del bigote (${f(p.boxplot.whisker_high)}), es decir, es atípico.`
-            : "."}
+            ? ` El máximo (${f(p.boxplot.max)}) queda fuera del bigote (${f(p.boxplot.whisker_high)}): es atípico.`
+            : ""}
         </Insight>
+        <div className="mt-3">
+          <Expose
+            items={[
+              `Q1 = ${f(q.q1)}, mediana = ${f(q.q2)}, Q3 = ${f(q.q3)}.`,
+              `La caja del boxplot contiene el 50 % de los datos.`,
+              `P90 = ${f(p.highlights.p90)}: el 90 % de los valores es menor o igual.`,
+            ]}
+          />
+        </div>
       </div>
     </Panel>
   );
@@ -209,7 +221,7 @@ export default async function Estadistica({ searchParams }: { searchParams: Prom
     <main className="mx-auto w-full max-w-7xl px-4 py-8">
       <PageHeader
         title="Estadística descriptiva y posición"
-        lead="Resumen numérico y gráfico de las variables observadas: tamaño de archivo, llegadas por hora, muestras por familia y tags por muestra."
+        lead="Resumen de cuatro variables: tamaño de archivo, muestras por hora, muestras por familia y tags por muestra."
         path="/estadistica"
         hours={hours}
       />
@@ -229,8 +241,8 @@ export default async function Estadistica({ searchParams }: { searchParams: Prom
             <p className="font-heading text-sm font-semibold uppercase tracking-widest text-primary">Tema 6</p>
             <h2 className="text-3xl font-bold">Estadística descriptiva</h2>
             <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-              Medidas de tendencia central (media, mediana, moda) y de dispersión (desviación estándar,
-              varianza, rango, CV), más la forma de la distribución en el histograma.
+              Resumen de cada variable: valor típico (media, mediana, moda) y qué tanto varía
+              (desviación estándar, varianza, rango). El histograma muestra la forma.
             </p>
           </div>
           {!d.ok ? (
@@ -238,20 +250,14 @@ export default async function Estadistica({ searchParams }: { searchParams: Prom
           ) : (
             d.data.variables.map((v, i) => <Descriptive key={v.key} v={v} i={i} />)
           )}
-          <Panel index={5} title="Qué aporta al problema">
-            <Relation>
-              <p>
-                Estas medidas resumen los datos reales antes de proponer un modelo. La <b>diferencia
-                entre media y mediana</b> del tamaño de archivo muestra que unos pocos ejecutables enormes
-                distorsionan el promedio: por eso conviene describirlo con la mediana y modelarlo con una
-                lognormal (tema 12).
-              </p>
-              <p>
-                La <b>dispersión por hora</b> (desviación estándar frente a la media) anticipa el resultado
-                de la prueba de Poisson: si la varianza supera con creces a la media, las llegadas son
-                ráfagas y no un goteo regular.
-              </p>
-            </Relation>
+          <Panel index={5} title="Para exponer">
+            <Expose
+              items={[
+                "Media: el promedio. Mediana: el valor del medio. Moda: el que más se repite.",
+                "Si la media y la mediana son muy distintas, hay valores extremos que jalan la media.",
+                "Desviación estándar: qué tanto se alejan los datos de la media.",
+              ]}
+            />
           </Panel>
         </section>
 
@@ -260,8 +266,8 @@ export default async function Estadistica({ searchParams }: { searchParams: Prom
             <p className="font-heading text-sm font-semibold uppercase tracking-widest text-primary">Tema 7</p>
             <h2 className="text-3xl font-bold">Medidas de posición</h2>
             <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-              Cuartiles (Q1–Q3), deciles (D1–D9) y percentiles (P90, P95, P99) dicen en qué lugar de la
-              distribución cae un valor. El diagrama de caja los resume: la caja es el 50 % central.
+              Cuartiles (Q1–Q3), deciles (D1–D9) y percentiles (P90, P95, P99) dicen en qué lugar cae un
+              valor. El boxplot los resume: la caja es la mitad central de los datos.
             </p>
           </div>
           {!p.ok ? (
@@ -269,19 +275,21 @@ export default async function Estadistica({ searchParams }: { searchParams: Prom
           ) : (
             p.data.variables.map((v, i) => <Position key={v.key} p={v} i={i} />)
           )}
-          <Panel index={5} title="Qué aporta al problema">
-            <Relation>
-              <p>
-                Los percentiles permiten definir <b>umbrales operativos</b>: por ejemplo, un archivo por
-                encima del P90 de tamaño es inusualmente grande dentro del malware observado. En las
-                llegadas por hora, el P90 indica el nivel de actividad que solo se supera 1 de cada 10
-                horas, útil para alertar picos.
-              </p>
-              <p>
-                El boxplot también marca los <b>atípicos</b> (fuera de Q1 − 1.5·IQR y Q3 + 1.5·IQR), que son
-                las muestras que más vale la pena revisar a mano.
-              </p>
-            </Relation>
+          <Panel index={5} title="Cómo se relaciona con el problema">
+            <Insight>
+              
+                Un percentil P dice cuántos datos quedan por debajo. Si un archivo pasa el P90 de
+                tamaño, es más grande que 9 de cada 10.
+              
+            </Insight>
+            <div className="mt-3">
+              <Relation>
+                <p>
+                  Sirven para poner umbrales: una hora con más muestras que el P90 es una hora de mucha
+                  actividad. Los atípicos (fuera de Q1 − 1.5·IQR y Q3 + 1.5·IQR) son los casos raros.
+                </p>
+              </Relation>
+            </div>
           </Panel>
         </section>
       </div>
