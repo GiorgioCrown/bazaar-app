@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AlertTriangle } from "lucide-react";
-import { getViz, VizApiError } from "@/lib/viz-api";
+import { getViz } from "@/lib/api";
 import type { Viz } from "@/lib/api-types";
 import {
   FamilyNetwork3D,
@@ -91,16 +91,9 @@ export default async function VisualizacionPage({
   searchParams: Promise<SP>;
 }) {
   const hours = parseHours(await searchParams);
-  let viz: Viz | null = null;
-  let error: string | null = null;
-  try {
-    viz = await getViz(hours);
-  } catch (e) {
-    error =
-      e instanceof VizApiError
-        ? e.message
-        : "Ocurrió un error inesperado al cargar las visualizaciones.";
-  }
+  const res = await getViz(hours);
+  const viz: Viz | null = res.ok ? res.data : null;
+  const error: string | null = res.ok ? null : res.error;
   const ins = viz ? insights(viz) : null;
 
   return (

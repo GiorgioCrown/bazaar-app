@@ -14,6 +14,7 @@ import type {
   RandomVariables,
   SearchMode,
   SearchResponse,
+  Viz,
 } from "@/lib/api-types";
 
 /**
@@ -91,6 +92,9 @@ export const getProbability = (hours: number) =>
   wrap<Probability>(() => cachedGet(`/api/probability?hours=${hours}`));
 export const getRandomVariables = (hours: number) =>
   wrap<RandomVariables>(() => cachedGet(`/api/random-variables?hours=${hours}`));
+
+export const getViz = (hours: number) =>
+  wrap<Viz>(() => cachedGet(`/api/viz?hours=${hours}`));
 
 export const getCombCalc = (n: number, k: number) =>
   wrap<CombCalc>(() => cachedGet(`/api/combinatorics/calc?${qs({ n, k })}`));
