@@ -67,7 +67,7 @@ def snapshot() -> dict:
         raise HTTPException(status_code=502, detail=str(e)) from e
 
 
-from . import families, search  # noqa: E402
+from . import descriptive, families, positions, search, viz  # noqa: E402
 
-for _r in (families.router, search.router):
+for _r in (families.router, search.router, descriptive.router, positions.router, viz.router):
     app.include_router(_r)
