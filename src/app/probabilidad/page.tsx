@@ -214,14 +214,16 @@ function Conditional({ p }: { p: Probability }) {
   const c = p.conditional;
   const g = c.family_given_file_type;
   const label = (id: string) => p.events.find((e) => e.id === id)?.name ?? id;
-  // evento condicionante con mayor efecto: mayor P(A|B) fuera de la diagonal
-  let best: { i: number; j: number; v: number } | null = null;
+  // par con mayor aumento: P(A|B) - P(A) más grande fuera de la diagonal
+  let best: { i: number; j: number; v: number; gain: number } | null = null;
   c.matrix.forEach((row, i) =>
     row.forEach((v, j) => {
-      if (i !== j && v != null && (!best || v > best.v)) best = { i, j, v };
+      const base = p.events.find((e) => e.id === c.events[i])?.p ?? 0;
+      if (i !== j && v != null && (!best || v - base > best.gain))
+        best = { i, j, v, gain: v - base };
     }),
   );
-  const b = best as { i: number; j: number; v: number } | null;
+  const b = best as { i: number; j: number; v: number; gain: number } | null;
   return (
     <Panel
       id="condicional"
