@@ -361,7 +361,7 @@ export function LognormalPdfChart({
           name="Datos (densidad)"
           fill={AMBER}
           fillOpacity={0.55}
-          barSize={10}
+          barSize={16}
         />
         <Line isAnimationActive={false}
           dataKey="model"
