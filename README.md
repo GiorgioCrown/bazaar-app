@@ -53,17 +53,17 @@ la renueva). Pruebas de la API: `npm run api:test`.
 
 | Tema | Ruta | Contenido |
 |---|---|---|
-| Resumen, multinomial y Poisson | `/analisis` | Distribución por familia con IC de Wilson, llegadas por hora, prueba de dispersión, CSV en `/analisis/csv` |
-| 5 · Análisis combinatorio | `/combinatoria` | Principio de conteo (perfiles familia × tipo × entrega), permutaciones (rankings), combinaciones (pares de tags, hipergeométrica) y calculadora n, k |
+| Resumen | `/analisis` | Muestras, familias y promedio por hora; frecuencias y probabilidad por familia (p = nᵢ/N); tendencia por hora; CSV en `/analisis/csv` |
+| 5 · Análisis combinatorio | `/combinatoria` | Principio de conteo (perfiles familia × tipo × entrega), permutaciones (rankings), combinaciones (pares de tags) y calculadora n, k |
 | 6 · Estadística descriptiva | `/estadistica#descriptiva` | Media, mediana, moda, desviación estándar, histogramas e interpretación |
 | 7 · Medidas de posición | `/estadistica#posicion` | Q1–Q3, D1–D9, P90/P95/P99, boxplot, curva de percentiles |
 | 8 · Axiomas de probabilidad | `/probabilidad#axiomas` | Eventos A–F, verificaciones ✔/✘, suma de la partición = 1 |
-| 9 · Independencia | `/probabilidad#independencia` | P(A∩B) frente a P(A)P(B), lift, χ² y veredicto por par |
+| 9 · Independencia | `/probabilidad#independencia` | P(A∩B) frente a P(A)·P(B), diferencia y veredicto “independientes (aprox.)” si la diferencia es ≤ 0.01 |
 | 10 · Probabilidad condicional | `/probabilidad#condicional` | Matriz P(A\|B) y P(familia \| tipo de archivo) |
 | 11 · Teorema de Bayes | `/bayes` | Laboratorio: eliges evidencias y ves prior → posterior paso a paso |
-| 12 · Variables aleatorias | `/variables` | X (Poisson/binomial negativa), Y (lognormal), Z; E y Var |
+| 12 · Variables aleatorias | `/variables` | X y Z (discretas) e Y (continua): distribución observada, E y Var |
 | 13 · Visualización 3D | `/visualizacion` | Terreno familia × hora, histograma 3D, red de co-ocurrencia |
 | Explorador | `/explorador` | Búsqueda de muestras por hash, familia, tag, tipo o ClamAV |
 
-Cada sección incluye una interpretación en lenguaje claro y un bloque
-“Cómo se relaciona con el problema”.
+Cada sección incluye un recuadro “Qué significa”, otro
+“Cómo se relaciona con el problema” y, cuando ayuda, viñetas “Para exponer”.
