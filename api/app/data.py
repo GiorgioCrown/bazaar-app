@@ -94,6 +94,8 @@ def _post(form: dict[str, Any], retries: int = 4) -> dict[str, Any]:
             if r.status_code == 200:
                 return r.json()
             last = f"HTTP {r.status_code}"
+            if 400 <= r.status_code < 500 and r.status_code != 429:  # reintentar no ayuda (p. ej. key inválida)
+                break
         except (httpx.HTTPError, ValueError) as e:  # red o JSON inválido
             last = type(e).__name__
         time.sleep(1.5 * (attempt + 1))

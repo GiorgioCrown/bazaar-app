@@ -82,3 +82,23 @@ def test_guardar_snapshot_en_vivo_es_atomico(monkeypatch, tmp_path):
     assert data.save_snapshot()["saved"] == 1
     assert data.load_snapshot()["data"] == recs
     assert [p.name for p in tmp_path.iterdir()] == ["snapshot.json"]
+
+
+def test_post_no_reintenta_en_401_ni_filtra_la_key(monkeypatch):
+    import pytest
+
+    llamadas = []
+
+    class R:
+        status_code = 401
+
+    def fake_post(url, data=None, headers=None, timeout=None):
+        llamadas.append(headers)
+        return R()
+
+    monkeypatch.setenv("ABUSECH_AUTH_KEY", "SECRETA123")
+    monkeypatch.setattr(data.httpx, "post", fake_post)
+    monkeypatch.setattr(data.time, "sleep", lambda s: None)
+    with pytest.raises(data.DataUnavailable) as e:
+        data._post({"query": "x"})
+    assert len(llamadas) == 1 and "SECRETA123" not in str(e.value) and "401" in str(e.value)
