@@ -12,7 +12,6 @@ from typing import Annotated
 
 import pandas as pd
 from fastapi import APIRouter, HTTPException, Query
-from scipy import stats
 
 from .deps import Hours, get_dataset
 from .models import CombCalc, Combinatorics
@@ -98,7 +97,7 @@ def counting_block(om: pd.DataFrame) -> dict:
             f"a la vez, así que hay {f}·{ft}·{dm}·{cl} = {fmt_big(possible)} perfiles posibles. En los datos solo aparecen "
             f"{observed} ({observed / possible:.2%}): los atributos están fuertemente correlacionados (no todo se combina con todo). "
             f"Cardinalidades y perfiles observados se cuentan solo sobre las {len(om)} muestras con metadatos completos "
-            "(las permutaciones y la hipergeométrica usan todas las muestras con familia de la ventana).",
+            "(las permutaciones usan todas las muestras con familia de la ventana).",
         ),
         item(
             "counting_sum",
@@ -224,34 +223,7 @@ def combinations_block(df: pd.DataFrame, om: pd.DataFrame) -> dict:
     )
     tag_pairs = [{"pair": [a, b], "count": int(c)} for (a, b), c in pair_counts.most_common(10)]
 
-    # Hipergeométrica: P(al menos 1 de la familia líder en una selección de 10)
-    lead, K = (fam.index[0], int(fam.iloc[0])) if F else ("(ninguna)", 0)
-    pmf = stats.hypergeom(M=N, n=K, N=draws).pmf(list(range(draws + 1)))
-    p_at_least = 1.0 - float(pmf[0])
-    hg_num = math.comb(N - K, draws)
-    items.append(
-        item(
-            "hypergeometric",
-            f"Hipergeométrica: ≥1 muestra de {lead} en {draws}",
-            "P(X=k) = C(K,k)·C(N−K,n−k) / C(N,n);  P(X≥1) = 1 − C(N−K,n)/C(N,n)",
-            {"N": N, "K": K, "n": draws},
-            hg_num,
-            f"De {N} muestras, {K} son de {lead}. Al tomar {draws} sin reemplazo, P(ninguna de {lead}) = C({N - K},{draws})/C({N},{draws}) "
-            f"= {1 - p_at_least:.4f}, así que P(al menos una) = {p_at_least:.4f}. El resultado mostrado es el numerador C(N−K,n).",
-        )
-    )
-    return {
-        "items": items,
-        "tag_pairs": tag_pairs,
-        "hypergeometric": {
-            "population": N,
-            "successes": K,
-            "draws": draws,
-            "family": lead,
-            "p_at_least_one": p_at_least,
-            "pmf": [{"k": k, "p": float(p)} for k, p in enumerate(pmf)],
-        },
-    }
+    return {"items": items, "tag_pairs": tag_pairs}
 
 
 @router.get("/combinatorics", response_model=Combinatorics)
