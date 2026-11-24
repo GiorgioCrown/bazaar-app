@@ -52,3 +52,11 @@ def log10_int(n: int) -> float:
     return math.log10(n) if n < 10**300 else (len(str(n)) - 1) + math.log10(
         int(str(n)[:15]) / 10**14
     )
+
+
+def observed_hours(df: pd.DataFrame) -> float:
+    """Ventana real observada (la API puede truncar); mínimo 1 h."""
+    t = df["first_seen"].dropna()
+    if t.empty:
+        return 1.0
+    return max((t.max() - t.min()).total_seconds() / 3600, 1.0)

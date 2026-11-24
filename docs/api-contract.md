@@ -29,6 +29,21 @@ Una fila por muestra. Columnas: `sha256`, `first_seen` (datetime64 UTC),
 `delivery_method`, `reporter`, `tags` (list[str]), `n_tags` (int),
 `clamav` (bool: tiene firma ClamAV), `hour` (floor a hora UTC).
 
+## Origen real de los datos y enriquecimiento (nota de implementación)
+`recent_detections` solo devuelve `sha256`, `first_seen`, `file_name` y `signature`
+(familia). Los demás campos del DataFrame se obtienen de la propia API real con
+`get_siginfo` (familias con ≥5 muestras), `get_file_type` (20 tipos comunes) y
+`get_recent`, uniendo por `sha256` (cobertura ≈ 90-99 %). Las filas sin
+metadatos conservan `NA` (columna `enriched=False`); nada se imputa.
+- Familias, serie por hora, X (muestras/hora) usan **todas** las filas.
+- `file_size`, `file_type`, `delivery_method`, tags, ClamAV, Ω de
+  `/api/probability`, `/api/bayes`, `/api/combinatorics` (perfiles), Y y Z usan
+  solo las filas enriquecidas (`Overview.enriched`; `Probability.n` es ese Ω).
+- `Overview` añade `enriched` y `enriched_fraction` (cambio respecto al contrato
+  inicial; también en `api-types.ts`).
+- Hoy `recent_detections` solo lista muestras con firma, por lo que el evento F
+  (sin familia) puede tener conteo 0.
+
 ## Endpoints (todos GET salvo indicación)
 | Ruta | Sección | Contenido |
 |---|---|---|

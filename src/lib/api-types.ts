@@ -49,6 +49,9 @@ export type Overview = {
   lambda_total: number; // muestras/hora
   offline: boolean;
   fetched_at: string; // ISO
+  /** Muestras con metadatos completos (tamaño, tipo, tags, ClamAV…) */
+  enriched: number;
+  enriched_fraction: number;
 };
 
 /* ---------- Familias (migrado de stats.ts) ---------- */

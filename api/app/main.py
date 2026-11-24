@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 from . import data
 from .deps import Hours, get_dataset
 from .models import Health, Overview
-from .util import clean, fmt_utc
+from .util import clean, fmt_utc, observed_hours
 
 app = FastAPI(title="Bazaar PyE API", version="1.0.0")
 app.add_middleware(
@@ -30,14 +30,6 @@ async def _validation(_: Request, exc: RequestValidationError) -> JSONResponse:
 @app.get("/api/health", response_model=Health)
 def health() -> dict:
     return {"status": "ok", "offline": data.force_offline(), "rows_cached": data.rows_cached()}
-
-
-def observed_hours(df: pd.DataFrame) -> float:
-    """Ventana real observada (la API puede truncar); minimo 1 h."""
-    t = df["first_seen"].dropna()
-    if t.empty:
-        return 1.0
-    return max((t.max() - t.min()).total_seconds() / 3600, 1.0)
 
 
 @app.get("/api/overview", response_model=Overview)
@@ -73,3 +65,9 @@ def snapshot() -> dict:
         return data.save_snapshot()
     except data.DataUnavailable as e:
         raise HTTPException(status_code=502, detail=str(e)) from e
+
+
+from . import families, search  # noqa: E402
+
+for _r in (families.router, search.router):
+    app.include_router(_r)
