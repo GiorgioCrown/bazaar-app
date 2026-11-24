@@ -40,7 +40,7 @@ function Events({ p }: { p: Probability }) {
       index={0}
       topic="Tema 8 · Espacio muestral"
       title="Eventos sobre las muestras"
-      hint={`Ω = las ${num(p.n)} muestras de la ventana; P(evento) = casos favorables ÷ ${num(p.n)}.`}
+      hint={`Ω = las ${num(p.n)} muestras de la ventana con metadatos completos (ver nota en Independencia); P(evento) = casos favorables ÷ ${num(p.n)}.`}
     >
       <div className="overflow-x-auto rounded-lg border border-border">
         <Table>
@@ -69,6 +69,13 @@ function Events({ p }: { p: Probability }) {
           </TableBody>
         </Table>
       </div>
+      {p.events.some((e) => e.count === 0) && (
+        <p className="mt-3 text-sm text-muted-foreground">
+          Un evento con 0 muestras ({p.events.filter((e) => e.count === 0).map((e) => e.id).join(", ")}) es
+          el evento imposible en estos datos: su probabilidad es 0 (cumple el axioma 1), no un error. Por
+          ejemplo, la fuente solo lista aquí muestras que ya tienen firma, así que “sin familia” no aparece.
+        </p>
+      )}
     </Panel>
   );
 }
