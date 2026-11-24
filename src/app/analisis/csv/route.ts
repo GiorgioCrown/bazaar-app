@@ -1,24 +1,50 @@
-import { BazaarError, searchBazaar } from "@/lib/bazaar";
-import { analyze, familiesToCsv } from "@/lib/stats";
+import { getFamilies } from "@/lib/api";
+import { parseHours } from "@/lib/params";
 
+const cell = (v: string | number | null) => {
+  const s = v == null ? "" : String(v);
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+};
+
+/** CSV de familias: los datos vienen de la API (FastAPI), aquí solo se serializan. */
 export async function GET(request: Request) {
-  const hours = Math.min(
-    Math.max(Number(new URL(request.url).searchParams.get("hours")) || 168, 1),
-    168,
+  const sp = Object.fromEntries(new URL(request.url).searchParams);
+  const hours = parseHours(sp);
+  const res = await getFamilies(hours);
+  if (!res.ok) return new Response(res.error, { status: 502 });
+
+  const header = [
+    "familia",
+    "muestras",
+    "p",
+    "ic95_inf",
+    "ic95_sup",
+    "lambda_por_hora",
+    "p_al_menos_1_en_1h",
+    "p_al_menos_1_en_24h",
+    "primera_vez",
+    "ultima_vez",
+  ];
+  const lines = res.data.families.map((f) =>
+    [
+      f.family,
+      f.count,
+      f.p.toFixed(6),
+      f.ci_low.toFixed(6),
+      f.ci_high.toFixed(6),
+      f.rate_per_hour.toFixed(6),
+      f.p_next_hour.toFixed(6),
+      f.p_next_24h.toFixed(6),
+      f.first_seen,
+      f.last_seen,
+    ]
+      .map(cell)
+      .join(","),
   );
-  try {
-    const res = await searchBazaar("recent", String(hours));
-    if (res.query_status !== "ok") {
-      return new Response(`Sin datos: ${res.query_status}`, { status: 502 });
-    }
-    return new Response("﻿" + familiesToCsv(analyze(res.data ?? [])), {
-      headers: {
-        "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": `attachment; filename="familias_malware_${hours}h.csv"`,
-      },
-    });
-  } catch (e) {
-    const msg = e instanceof BazaarError ? e.message : "Error al consultar la API";
-    return new Response(msg, { status: 502 });
-  }
+  return new Response("﻿" + [header.join(","), ...lines].join("\r\n"), {
+    headers: {
+      "Content-Type": "text/csv; charset=utf-8",
+      "Content-Disposition": `attachment; filename="familias_malware_${hours}h.csv"`,
+    },
+  });
 }

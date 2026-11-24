@@ -12,26 +12,18 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import type { FamilyStat } from "@/lib/api-types";
 
-export type Row = {
-  family: string;
-  count: number;
-  p: number;
-  ciLow: number;
-  ciHigh: number;
-  ratePerHour: number;
-  pNextHour: number;
-  pNext24h: number;
-};
+export type Row = FamilyStat;
 
-type Key = "family" | "count" | "ratePerHour" | "pNextHour" | "pNext24h";
+type Key = "family" | "count" | "rate_per_hour" | "p_next_hour" | "p_next_24h";
 
 const COLS: { key: Key; label: string; align?: "right" }[] = [
   { key: "family", label: "Familia" },
   { key: "count", label: "Muestras · P(familia)", align: "right" },
-  { key: "ratePerHour", label: "λ / hora", align: "right" },
-  { key: "pNextHour", label: "P(≥1 en 1 h)", align: "right" },
-  { key: "pNext24h", label: "P(≥1 en 24 h)", align: "right" },
+  { key: "rate_per_hour", label: "λ / hora", align: "right" },
+  { key: "p_next_hour", label: "P(≥1 en 1 h)", align: "right" },
+  { key: "p_next_24h", label: "P(≥1 en 24 h)", align: "right" },
 ];
 
 const pct = (x: number, d = 1) => `${(x * 100).toFixed(d)} %`;
@@ -135,17 +127,17 @@ export function FamilyTable({ rows }: { rows: Row[] }) {
                     </span>
                   </div>
                   <div className="mt-0.5 text-right text-xs text-muted-foreground">
-                    IC 95 %: {pct(r.ciLow)}–{pct(r.ciHigh)}
+                    IC 95 %: {pct(r.ci_low)}–{pct(r.ci_high)}
                   </div>
                 </TableCell>
                 <TableCell className="text-right tabular-nums">
-                  {r.ratePerHour.toFixed(2)}
+                  {r.rate_per_hour.toFixed(2)}
                 </TableCell>
                 <TableCell className="text-right tabular-nums">
-                  <Prob v={r.pNextHour} />
+                  <Prob v={r.p_next_hour} />
                 </TableCell>
                 <TableCell className="text-right tabular-nums">
-                  <Prob v={r.pNext24h} />
+                  <Prob v={r.p_next_24h} />
                 </TableCell>
               </TableRow>
             ))}
