@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { AlertTriangle } from "lucide-react";
 import { getViz } from "@/lib/api";
+import { first, validHours, type SP } from "@/lib/params";
 import type { Viz } from "@/lib/api-types";
 import {
   FamilyNetwork3D,
@@ -28,13 +29,8 @@ const RANGES = [
   { h: 168, label: "7 días" },
 ];
 
-type SP = { [key: string]: string | string[] | undefined };
-
-function parseHours(sp: SP): number {
-  const raw = Array.isArray(sp.hours) ? sp.hours[0] : sp.hours;
-  const h = Number(raw);
-  return RANGES.some((r) => r.h === h) ? h : 72;
-}
+/** Ventana por defecto de las escenas 3D (acepta cualquier valor 1–168 que fije setWindow). */
+const parseHours = (sp: SP) => validHours(first(sp.hours)) ?? 72;
 
 function insights(v: Viz) {
   const rowTotals = v.family_hour_matrix.map((r) => r.reduce((s, x) => s + x, 0));
