@@ -1,6 +1,15 @@
 import Link from "next/link";
+import { AlertTriangle, CheckCircle2, Download, Info } from "lucide-react";
 import { BazaarError, searchBazaar } from "@/lib/bazaar";
 import { analyze, type Analysis } from "@/lib/stats";
+import { FlapNumber } from "@/components/flap-number";
+import { FamilyBars, HourlyChart } from "@/components/charts";
+import { FamilyTable } from "@/components/family-table";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 
 type SP = { [key: string]: string | string[] | undefined };
 
@@ -10,119 +19,259 @@ const RANGES = [
   { h: 168, label: "7 días" },
 ];
 
-const pct = (x: number, d = 2) => `${(x * 100).toFixed(d)} %`;
+const pct = (x: number, d = 1) => `${(x * 100).toFixed(d)} %`;
+const n = (x: number) => x.toLocaleString("es-MX");
 
-function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
+/** Titled region of the report: one panel, no nested cards. */
+function Panel({
+  title,
+  hint,
+  children,
+  className,
+  index = 0,
+}: {
+  title: string;
+  hint?: string;
+  children: React.ReactNode;
+  className?: string;
+  index?: number;
+}) {
   return (
-    <div className="rounded border border-zinc-200 p-4 dark:border-zinc-800">
-      <div className="text-xs uppercase text-zinc-500">{label}</div>
-      <div className="mt-1 text-2xl font-semibold">{value}</div>
-      {hint && <div className="mt-1 text-xs text-zinc-500">{hint}</div>}
+    <section
+      className={cn(
+        "rise rounded-xl border border-border bg-card p-5",
+        className,
+      )}
+      style={{ "--i": index } as React.CSSProperties}
+    >
+      <h2 className="text-2xl font-semibold">{title}</h2>
+      {hint && <p className="mt-1 text-sm text-muted-foreground">{hint}</p>}
+      <div className="mt-4">{children}</div>
+    </section>
+  );
+}
+
+function Board({ a }: { a: Analysis }) {
+  const rows = [
+    {
+      label: "Muestras descargadas",
+      value: n(a.total),
+      note: `${n(a.classified)} con familia · ${n(a.unclassified)} sin firma`,
+    },
+    {
+      label: "Familias distintas",
+      value: String(a.distinctFamilies),
+      note: `El top 5 reúne ${pct(a.top5Share)}`,
+    },
+    {
+      label: "Llegada global λ",
+      value: a.lambdaTotal.toFixed(1),
+      unit: "/h",
+      note: `Ventana observada de ${a.windowHours.toFixed(0)} h`,
+    },
+    {
+      label: "Entropía de Shannon",
+      value: a.entropy.toFixed(2),
+      unit: "bits",
+      note: `Uniformidad ${a.entropyNorm.toFixed(2)} de 1 · Gini-Simpson ${a.giniSimpson.toFixed(2)}`,
+    },
+  ];
+  return (
+    <section
+      aria-label="Resumen"
+      className="rise rounded-xl border border-border bg-card"
+    >
+      <dl className="flex h-full flex-col divide-y divide-border">
+        {rows.map((r) => (
+          <div key={r.label} className="flex flex-1 items-center gap-4 px-5 py-4">
+            <div className="min-w-0 flex-1">
+              <dt className="text-sm font-medium text-muted-foreground">
+                {r.label}
+              </dt>
+              <dd className="mt-0.5 text-xs text-muted-foreground/80">
+                {r.note}
+              </dd>
+            </div>
+            <div className="flex items-baseline gap-1.5">
+              <FlapNumber value={r.value} className="text-4xl" />
+              {r.unit && (
+                <span className="text-sm text-muted-foreground">{r.unit}</span>
+              )}
+            </div>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+}
+
+function Reading({ a }: { a: Analysis }) {
+  const top = a.families[0];
+  const d = a.dispersion;
+  const concentration =
+    a.entropyNorm < 0.45 ? "alta" : a.entropyNorm < 0.7 ? "media" : "baja";
+  return (
+    <div className="space-y-3">
+      {top && (
+        <Alert>
+          <Info />
+          <AlertTitle className="text-base">
+            {top.family} domina la muestra
+          </AlertTitle>
+          <AlertDescription>
+            Representa {pct(top.p)} de las muestras clasificadas (IC 95 %{" "}
+            {pct(top.ciLow)}–{pct(top.ciHigh)}). Si llega una muestra nueva,
+            hay {pct(top.p)} de probabilidad de que sea {top.family}. La
+            concentración es {concentration}: el top 5 suma {pct(a.top5Share)}.
+          </AlertDescription>
+        </Alert>
+      )}
+      {d &&
+        (d.pValue > 0.05 ? (
+          <Alert>
+            <CheckCircle2 />
+            <AlertTitle className="text-base">
+              Las llegadas se ajustan a Poisson
+            </AlertTitle>
+            <AlertDescription>
+              Índice de dispersión {d.index.toFixed(2)} (p ≈{" "}
+              {d.pValue.toFixed(3)}): no hay evidencia contra el modelo.
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <Alert className="border-primary/40 bg-primary/5">
+            <AlertTriangle className="text-primary" />
+            <AlertTitle className="text-base text-primary">
+              Poisson simple no alcanza: llegan en ráfagas
+            </AlertTitle>
+            <AlertDescription>
+              Índice de dispersión {d.index.toFixed(1)} (χ² = {d.chi2.toFixed(0)},
+              gl = {d.df}, p ≈ {d.pValue.toFixed(3)}).{" "}
+              {d.index > 1
+                ? "Hay sobredispersión, así que las probabilidades de “al menos una aparición” son una cota inferior."
+                : "Hay subdispersión: las llegadas son más regulares que Poisson."}
+            </AlertDescription>
+          </Alert>
+        ))}
     </div>
   );
 }
 
-function Report({ a }: { a: Analysis }) {
-  const top = a.families.slice(0, 15);
-  const maxFam = top[0]?.count ?? 1;
-  const maxHour = Math.max(...a.hourly.map((h) => h.count), 1);
-  const d = a.dispersion;
-  const poissonOk = d ? d.pValue > 0.05 : null;
+function Report({ a, hours }: { a: Analysis; hours: number }) {
+  const top = a.families.slice(0, 10);
+  const rest = a.families.slice(10);
+  const restCount = rest.reduce((s, f) => s + f.count, 0);
+  const bars = [
+    ...top.map((f) => ({ family: f.family, count: f.count, p: f.p })),
+    ...(rest.length
+      ? [
+          {
+            family: `Otras (${rest.length})`,
+            count: restCount,
+            p: restCount / a.classified,
+          },
+        ]
+      : []),
+  ];
 
   return (
-    <>
-      <section className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Stat label="Muestras" value={a.total.toLocaleString("es-MX")} hint={`${a.classified} clasificadas · ${a.unclassified} sin firma`} />
-        <Stat label="Familias distintas" value={String(a.distinctFamilies)} hint={`Top 5 = ${pct(a.top5Share, 1)}`} />
-        <Stat label="Tasa global λ" value={`${a.lambdaTotal.toFixed(1)}/h`} hint={`Ventana: ${a.windowHours.toFixed(1)} h`} />
-        <Stat label="Entropía de Shannon" value={`${a.entropy.toFixed(2)} bits`} hint={`Normalizada ${a.entropyNorm.toFixed(2)} · Gini-Simpson ${a.giniSimpson.toFixed(2)}`} />
-      </section>
-      <p className="mt-2 text-xs text-zinc-500">
-        Datos observados del {a.windowStart} al {a.windowEnd} (UTC).
-      </p>
-
-      <h2 className="mt-10 text-lg font-semibold">Distribución estadística por familia</h2>
-      <div className="mt-3 space-y-1.5">
-        {top.map((f) => (
-          <div key={f.family} className="flex items-center gap-3 text-sm">
-            <span className="w-40 shrink-0 truncate" title={f.family}>{f.family}</span>
-            <div className="h-4 flex-1 rounded bg-zinc-100 dark:bg-zinc-900">
-              <div className="h-4 rounded bg-zinc-800 dark:bg-zinc-200" style={{ width: `${(f.count / maxFam) * 100}%` }} />
-            </div>
-            <span className="w-28 shrink-0 text-right tabular-nums">{f.count} · {pct(f.p, 1)}</span>
-          </div>
-        ))}
+    <div className="mt-8 space-y-6">
+      <div className="grid gap-6 lg:grid-cols-[400px_minmax(0,1fr)]">
+        <Board a={a} />
+        <Panel
+          index={1}
+          title="Distribución por familia"
+          hint={`P(familia) = muestras de la familia ÷ ${n(a.classified)} clasificadas. Datos del ${a.windowStart} al ${a.windowEnd} UTC.`}
+        >
+          <FamilyBars data={bars} />
+        </Panel>
       </div>
 
-      <h2 className="mt-10 text-lg font-semibold">Modelo probabilístico de aparición</h2>
-      <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-zinc-600 dark:text-zinc-400">
-        <li><b>Multinomial:</b> la probabilidad de que la próxima muestra clasificada sea de la familia <i>i</i> se estima como p<sub>i</sub> = n<sub>i</sub>/N, con intervalo de Wilson al 95 %.</li>
-        <li><b>Poisson:</b> las llegadas de cada familia se modelan con tasa λ<sub>i</sub> = n<sub>i</sub>/T (muestras por hora); P(≥1 en t horas) = 1 − e<sup>−λ<sub>i</sub>·t</sup>.</li>
-        {d && (
-          <li>
-            <b>Ajuste Poisson global:</b> índice de dispersión = {d.index.toFixed(2)} (χ² = {d.chi2.toFixed(1)}, gl = {d.df}, p ≈ {d.pValue.toFixed(4)}).{" "}
-            {poissonOk
-              ? "No se rechaza el modelo de Poisson."
-              : d.index > 1
-                ? "Se rechaza Poisson simple: hay sobredispersión (las muestras llegan en ráfagas), así que las probabilidades de Poisson son una cota inferior."
-                : "Se rechaza Poisson simple: hay subdispersión."}
-          </li>
-        )}
-      </ul>
+      <div className="grid gap-6 lg:grid-cols-[400px_minmax(0,1fr)]">
+        <Panel
+          index={2}
+          title="Lectura del modelo"
+          hint="Qué dicen los números, sin jerga."
+        >
+          <Reading a={a} />
+        </Panel>
+        <Panel
+          index={3}
+          title="Patrón temporal"
+          hint="Muestras nuevas por hora (UTC). Los picos explican la sobredispersión."
+        >
+          <HourlyChart data={a.hourly} />
+        </Panel>
+      </div>
 
-      <div className="mt-4 overflow-x-auto">
-        <table className="w-full text-left text-sm">
-          <thead className="border-b border-zinc-300 text-xs uppercase text-zinc-500 dark:border-zinc-700">
-            <tr>
-              <th className="py-2 pr-4">Familia</th>
-              <th className="py-2 pr-4 text-right">Muestras</th>
-              <th className="py-2 pr-4 text-right">P(familia)</th>
-              <th className="py-2 pr-4 text-right">IC 95 %</th>
-              <th className="py-2 pr-4 text-right">λ (por hora)</th>
-              <th className="py-2 pr-4 text-right">P(≥1 en 1 h)</th>
-              <th className="py-2 text-right">P(≥1 en 24 h)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {a.families.slice(0, 50).map((f) => (
-              <tr key={f.family} className="border-b border-zinc-200 dark:border-zinc-800">
-                <td className="py-2 pr-4">{f.family}</td>
-                <td className="py-2 pr-4 text-right tabular-nums">{f.count}</td>
-                <td className="py-2 pr-4 text-right tabular-nums">{pct(f.p)}</td>
-                <td className="py-2 pr-4 text-right tabular-nums text-zinc-500">{pct(f.ciLow)}–{pct(f.ciHigh)}</td>
-                <td className="py-2 pr-4 text-right tabular-nums">{f.ratePerHour.toFixed(3)}</td>
-                <td className="py-2 pr-4 text-right tabular-nums">{pct(f.pNextHour)}</td>
-                <td className="py-2 text-right tabular-nums">{pct(f.pNext24h)}</td>
-              </tr>
+      <Panel
+        index={4}
+        title="Modelo de aparición por familia"
+        hint="Multinomial para “¿de qué familia será la próxima muestra?” y Poisson para “¿aparecerá al menos una en t horas?”. Ordena o filtra con la tabla."
+      >
+        <FamilyTable
+          rows={a.families.map((f) => ({
+            family: f.family,
+            count: f.count,
+            p: f.p,
+            ciLow: f.ciLow,
+            ciHigh: f.ciHigh,
+            ratePerHour: f.ratePerHour,
+            pNextHour: f.pNextHour,
+            pNext24h: f.pNext24h,
+          }))}
+        />
+      </Panel>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Panel index={5} title="Cómo se calcula">
+          <ul className="space-y-2 text-sm leading-relaxed text-muted-foreground">
+            <li>
+              <b className="text-foreground">Multinomial:</b> pᵢ = nᵢ / N, con
+              intervalo de Wilson al 95 %.
+            </li>
+            <li>
+              <b className="text-foreground">Poisson:</b> λᵢ = nᵢ / T muestras
+              por hora; P(≥1 en t h) = 1 − e<sup>−λᵢ·t</sup>.
+            </li>
+            <li>
+              <b className="text-foreground">Prueba de dispersión:</b> χ² =
+              Σ(xₕ − x̄)² / x̄ sobre los conteos por hora; si p &lt; 0.05 se
+              rechaza Poisson simple.
+            </li>
+            <li>
+              <b className="text-foreground">Diversidad:</b> entropía de
+              Shannon H = −Σ pᵢ log₂ pᵢ e índice de Gini-Simpson.
+            </li>
+          </ul>
+        </Panel>
+        <Panel index={6} title="Tipos de archivo">
+          <div className="flex flex-wrap gap-2">
+            {a.fileTypes.slice(0, 12).map((t) => (
+              <Badge key={t.type} variant="secondary" className="h-7 px-2.5 text-sm">
+                {t.type}
+                <span className="ml-1.5 text-muted-foreground">
+                  {pct(t.p)}
+                </span>
+              </Badge>
             ))}
-          </tbody>
-        </table>
-        {a.families.length > 50 && (
-          <p className="mt-2 text-xs text-zinc-500">Mostrando 50 de {a.families.length} familias; el CSV incluye todas.</p>
-        )}
+          </div>
+          <Separator className="my-4" />
+          <p className="text-sm text-muted-foreground">
+            Ventana pedida: {hours} h. La API puede acotar los registros, por
+            eso las tasas usan la ventana realmente observada.
+          </p>
+        </Panel>
       </div>
-
-      <h2 className="mt-10 text-lg font-semibold">Patrón temporal (muestras por hora, UTC)</h2>
-      <div className="mt-3 flex h-32 items-end gap-px" role="img" aria-label="Muestras por hora">
-        {a.hourly.map((h) => (
-          <div key={h.hour} title={`${h.hour}: ${h.count}`} className="flex-1 bg-zinc-800 dark:bg-zinc-200" style={{ height: `${(h.count / maxHour) * 100}%`, minHeight: h.count ? 2 : 0 }} />
-        ))}
-      </div>
-      <div className="mt-1 flex justify-between text-xs text-zinc-500">
-        <span>{a.hourly[0]?.hour}</span>
-        <span>máx {maxHour}/h</span>
-        <span>{a.hourly.at(-1)?.hour}</span>
-      </div>
-
-      <h2 className="mt-10 text-lg font-semibold">Tipos de archivo</h2>
-      <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-        {a.fileTypes.slice(0, 8).map((t) => `${t.type} ${pct(t.p, 1)}`).join(" · ")}
-      </p>
-    </>
+    </div>
   );
 }
 
-export default async function Analisis({ searchParams }: { searchParams: Promise<SP> }) {
+export default async function Analisis({
+  searchParams,
+}: {
+  searchParams: Promise<SP>;
+}) {
   const sp = await searchParams;
   const raw = Array.isArray(sp.hours) ? sp.hours[0] : sp.hours;
   const hours = Math.min(Math.max(Number(raw) || 168, 1), 168);
@@ -134,33 +283,71 @@ export default async function Analisis({ searchParams }: { searchParams: Promise
     if (res.query_status !== "ok") error = `La API respondió: ${res.query_status}`;
     else analysis = analyze(res.data ?? []);
   } catch (e) {
-    error = e instanceof BazaarError ? e.message : "No se pudo conectar con la API de MalwareBazaar.";
+    error =
+      e instanceof BazaarError
+        ? e.message
+        : "No se pudo conectar con la API de MalwareBazaar.";
   }
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 py-10">
-      <Link href="/" className="text-sm underline">← Explorador</Link>
-      <h1 className="mt-2 text-2xl font-semibold">Análisis probabilístico de malware</h1>
-      <p className="mt-1 text-sm text-zinc-500">
-        Registros de MalwareBazaar → clasificación por familia → distribución y modelo de aparición.
-      </p>
+    <main className="mx-auto w-full max-w-7xl px-4 py-8">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-4xl font-bold sm:text-5xl">
+            Análisis probabilístico de malware
+          </h1>
+          <p className="mt-2 max-w-2xl text-muted-foreground">
+            Registros reales de MalwareBazaar, clasificados por familia, con su
+            distribución estadística y un modelo de probabilidad de aparición.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <div
+            role="group"
+            aria-label="Rango de tiempo"
+            className="inline-flex rounded-lg border border-border bg-card p-0.5"
+          >
+            {RANGES.map((r) => (
+              <Link
+                key={r.h}
+                href={`/analisis?hours=${r.h}`}
+                aria-current={r.h === hours ? "true" : undefined}
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                  r.h === hours
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {r.label}
+              </Link>
+            ))}
+          </div>
+          {analysis && (
+            <a
+              href={`/analisis/csv?hours=${hours}`}
+              className={buttonVariants({ variant: "outline" })}
+            >
+              <Download className="size-4" aria-hidden />
+              Descargar CSV
+            </a>
+          )}
+        </div>
+      </div>
 
-      <nav className="mt-6 flex flex-wrap items-center gap-2 text-sm">
-        {RANGES.map((r) => (
-          <Link key={r.h} href={`/analisis?hours=${r.h}`} className={`rounded border px-3 py-1.5 ${r.h === hours ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900" : "border-zinc-300 dark:border-zinc-700"}`}>
-            {r.label}
-          </Link>
-        ))}
-        {analysis && (
-          <a href={`/analisis/csv?hours=${hours}`} className="ml-auto rounded border border-zinc-300 px-3 py-1.5 dark:border-zinc-700">
-            Descargar CSV
-          </a>
-        )}
-      </nav>
-
-      {error && <p className="mt-6 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">{error}</p>}
-      {analysis && analysis.total === 0 && <p className="mt-6 text-sm">Sin muestras en el rango.</p>}
-      {analysis && analysis.total > 0 && <Report a={analysis} />}
+      {error && (
+        <Alert variant="destructive" className="mt-8">
+          <AlertTriangle />
+          <AlertTitle>No se pudieron cargar los datos</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+      {analysis && analysis.total === 0 && (
+        <p className="mt-8 text-muted-foreground">
+          No hay muestras en este rango. Prueba con una ventana mayor.
+        </p>
+      )}
+      {analysis && analysis.total > 0 && <Report a={analysis} hours={hours} />}
     </main>
   );
 }
